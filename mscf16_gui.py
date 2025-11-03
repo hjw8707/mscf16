@@ -29,7 +29,10 @@ class ConnectionPanel(QGroupBox):
         self.init_ui()
         self.refresh_ports()
 
+
     def init_ui(self):
+        self.setContentsMargins(2, 2, 2, 2)
+
         layout = QGridLayout()
 
         # Port selection
@@ -158,22 +161,23 @@ class CombinedControlPanel(QWidget):
 
         # Threshold settings
         threshold_group = QGroupBox("Threshold Settings")
+        threshold_group.setContentsMargins(2, 10, 2, 2)
         threshold_layout = QVBoxLayout()
+        threshold_layout.setSpacing(5)
 
         # Individual channel Threshold settings
-        individual_threshold_layout = QVBoxLayout()
-
+        individual_threshold_layout = QGridLayout()
+        individual_threshold_layout.setSpacing(5)
         # Channel Threshold value input (2 rows)
         self.threshold_spins = {}
         for row in range(2):
-            row_layout = QHBoxLayout()
             for col in range(8):
                 channel_num = row * 8 + col + 1
 
                 # Channel number label
                 channel_label = QLabel(f"CH{channel_num}")
                 channel_label.setFixedWidth(35)
-                row_layout.addWidget(channel_label)
+                individual_threshold_layout.addWidget(channel_label, row, 3*col)
 
                 # Threshold value input
                 spin_box = QSpinBox()
@@ -181,21 +185,19 @@ class CombinedControlPanel(QWidget):
                 spin_box.setValue(128)
                 spin_box.setFixedWidth(50)
                 self.threshold_spins[channel_num] = spin_box
-                row_layout.addWidget(spin_box)
+                individual_threshold_layout.addWidget(spin_box, row, 3*col+1)
 
                 # Set button
                 btn = QPushButton("Set")
                 btn.setFixedSize(50, 25)
                 btn.clicked.connect(lambda checked, ch=channel_num: self.set_threshold(ch))
-                row_layout.addWidget(btn)
-
-                row_layout.addSpacing(5)
-            individual_threshold_layout.addLayout(row_layout)
+                individual_threshold_layout.addWidget(btn, row, 3*col+2)
 
         threshold_layout.addLayout(individual_threshold_layout)
 
         # Common Threshold settings
         common_threshold_layout = QHBoxLayout()
+        common_threshold_layout.setSpacing(5)
         common_threshold_layout.addWidget(QLabel("Common Threshold:"))
         self.common_threshold_spin = QSpinBox()
         self.common_threshold_spin.setRange(0, 255)
@@ -216,22 +218,23 @@ class CombinedControlPanel(QWidget):
 
         # PZ value settings
         pz_group = QGroupBox("PZ Value Settings")
+        pz_group.setContentsMargins(2, 10, 2, 2)
         pz_layout = QVBoxLayout()
 
         # Individual channel PZ settings
-        individual_pz_layout = QVBoxLayout()
+        individual_pz_layout = QGridLayout()
+        individual_pz_layout.setSpacing(5)
 
         # Channel PZ value input (2 rows)
         self.pz_spins = {}
         for row in range(2):
-            row_layout = QHBoxLayout()
             for col in range(8):
                 channel_num = row * 8 + col + 1
 
                 # Channel number label
                 channel_label = QLabel(f"CH{channel_num}")
                 channel_label.setFixedWidth(35)
-                row_layout.addWidget(channel_label)
+                individual_pz_layout.addWidget(channel_label, row, 3*col)
 
                 # PZ value input
                 spin_box = QSpinBox()
@@ -239,21 +242,19 @@ class CombinedControlPanel(QWidget):
                 spin_box.setValue(100)
                 spin_box.setFixedWidth(50)
                 self.pz_spins[channel_num] = spin_box
-                row_layout.addWidget(spin_box)
+                individual_pz_layout.addWidget(spin_box, row, 3*col+1)
 
                 # Set button
                 btn = QPushButton("Set")
                 btn.setFixedSize(50, 25)
                 btn.clicked.connect(lambda checked, ch=channel_num: self.set_pz_value(ch))
-                row_layout.addWidget(btn)
-
-                row_layout.addSpacing(5)
-            individual_pz_layout.addLayout(row_layout)
+                individual_pz_layout.addWidget(btn, row, 3*col+2)
 
         pz_layout.addLayout(individual_pz_layout)
 
         # Common PZ settings
         common_pz_layout = QHBoxLayout()
+        common_pz_layout.setSpacing(5)
         common_pz_layout.addWidget(QLabel("Common PZ Value:"))
         self.common_pz_spin = QSpinBox()
         self.common_pz_spin.setRange(0, 255)
@@ -274,44 +275,37 @@ class CombinedControlPanel(QWidget):
 
         # Monitor channel settings
         monitor_group = QGroupBox("Monitor Channel Settings")
-        monitor_layout = QVBoxLayout()
+        monitor_group.setContentsMargins(2, 10, 2, 2)
 
-        # Monitor channel buttons (1-16 only)
-        monitor_channels_layout = QVBoxLayout()
-        for row in range(1):
-            row_layout = QHBoxLayout()
-            for col in range(16):
-                channel_num = row * 16 + col + 1
-                btn = QPushButton(f"M{channel_num}")
-                btn.setFixedSize(50, 30)
-                btn.setStyleSheet("QPushButton { background-color: #ccccff; }")
-                btn.clicked.connect(lambda checked, ch=channel_num: self.set_monitor_channel(ch))
-                row_layout.addWidget(btn)
-            monitor_channels_layout.addLayout(row_layout)
+        row_layout = QHBoxLayout()
+        row_layout.setSpacing(5)
+        for col in range(16):
+            channel_num = col + 1
+            btn = QPushButton(f"M{channel_num}")
+            btn.setFixedSize(40, 30)
+            btn.setStyleSheet("QPushButton { background-color: #ccccff; }")
+            btn.clicked.connect(lambda checked, ch=channel_num: self.set_monitor_channel(ch))
+            row_layout.addWidget(btn)
 
-        monitor_layout.addLayout(monitor_channels_layout)
-        monitor_group.setLayout(monitor_layout)
+        monitor_group.setLayout(row_layout)
         channel_layout.addWidget(monitor_group)
 
         # Automatic PZ settings
         auto_pz_group = QGroupBox("Automatic PZ Settings")
-        auto_pz_layout = QVBoxLayout()
+        auto_pz_group.setContentsMargins(2, 10, 2, 2)
 
         # Automatic PZ channel buttons (1-16 only)
-        auto_pz_channels_layout = QVBoxLayout()
-        for row in range(1):
-            row_layout = QHBoxLayout()
-            for col in range(16):
-                channel_num = row * 16 + col + 1
-                btn = QPushButton(f"AP{channel_num}")
-                btn.setFixedSize(50, 30)
-                btn.setStyleSheet("QPushButton { background-color: #ffffcc; }")
-                btn.clicked.connect(lambda checked, ch=channel_num: self.set_automatic_pz(ch))
-                row_layout.addWidget(btn)
-            auto_pz_channels_layout.addLayout(row_layout)
+        row_layout = QHBoxLayout()
+        row_layout.setSpacing(5)
+        for col in range(16):
+            channel_num = col + 1
+            btn = QPushButton(f"AP{channel_num}")
+            btn.setFixedSize(40, 30)
+            btn.setStyleSheet("QPushButton { background-color: #ffffcc; }")
+            btn.clicked.connect(lambda checked, ch=channel_num: self.set_automatic_pz(ch))
+            row_layout.addWidget(btn)
 
-        auto_pz_layout.addLayout(auto_pz_channels_layout)
-        auto_pz_group.setLayout(auto_pz_layout)
+        auto_pz_group.setLayout(row_layout)
         channel_layout.addWidget(auto_pz_group)
 
         channel_widget.setLayout(channel_layout)
@@ -323,10 +317,13 @@ class CombinedControlPanel(QWidget):
 
         # Shaping Time settings
         shaping_group = QGroupBox("Shaping Time Settings")
+        shaping_group.setContentsMargins(2, 10, 2, 2)
 
         # Group Shaping Time value input (2x2 grid)
         self.shaping_spins = {}
         row_layout = QHBoxLayout()
+        row_layout.setSpacing(5)
+
         for group_num in range(1, 5):
             # Group number label
             group_label = QLabel(f"G{group_num}:")
@@ -346,8 +343,6 @@ class CombinedControlPanel(QWidget):
             btn.clicked.connect(lambda checked, g=group_num: self.set_shaping_time(g))
             row_layout.addWidget(btn)
 
-            row_layout.addSpacing(20)
-
         # Common Shaping Time settings
         row_layout.addWidget(QLabel("Common Shaping Time:"))
         self.common_shaping_spin = QSpinBox()
@@ -361,15 +356,16 @@ class CombinedControlPanel(QWidget):
         common_shaping_btn.setStyleSheet("QPushButton { background-color: #ffddcc; font-weight: bold; }")
         common_shaping_btn.clicked.connect(lambda: self.set_shaping_time(5))
         row_layout.addWidget(common_shaping_btn)
-        #common_shaping_layout.addStretch()
 
-        #individual_shaping_layout.addLayout(common_shaping_layout)
+        row_layout.addStretch()
         shaping_group.setLayout(row_layout)
         group_layout.addWidget(shaping_group)
 
         # Gain settings
         gain_group = QGroupBox("Gain Settings")
+        gain_group.setContentsMargins(2, 10, 2, 2)
         gain_layout = QHBoxLayout()
+        gain_layout.setSpacing(5)
 
         # Individual group Gain settings
         # Group Gain value input (2x2 grid)
@@ -394,8 +390,6 @@ class CombinedControlPanel(QWidget):
             btn.clicked.connect(lambda checked, g=group_num: self.set_gain(g))
             gain_layout.addWidget(btn)
 
-            gain_layout.addSpacing(20)
-
         # Common Gain settings
         gain_layout.addWidget(QLabel("Common Gain:"))
         self.common_gain_spin = QSpinBox()
@@ -409,9 +403,8 @@ class CombinedControlPanel(QWidget):
         common_gain_btn.setStyleSheet("QPushButton { background-color: #ddffdd; font-weight: bold; }")
         common_gain_btn.clicked.connect(lambda: self.set_gain(5))
         gain_layout.addWidget(common_gain_btn)
-        #common_gain_layout.addStretch()
+        gain_layout.addStretch()
 
-        #individual_gain_layout.addLayout(common_gain_layout)
         gain_group.setLayout(gain_layout)
         group_layout.addWidget(gain_group)
 
@@ -528,11 +521,12 @@ class CombinedControlPanel(QWidget):
 
 
 
-class AdvancedControlPanel(QGroupBox):
+class AdvancedControlPanel(QWidget):
     """고급 제어 패널"""
 
     def __init__(self, connection_panel):
-        super().__init__("고급 제어")
+        #super().__init__("고급 제어")
+        super().__init__()
         self.connection_panel = connection_panel
         self.init_ui()
 
@@ -738,15 +732,16 @@ class AdvancedControlPanel(QGroupBox):
             QMessageBox.critical(self, "오류", f"RC 모드 비활성화 실패:\n{str(e)}")
 
 
-class StatusPanel(QGroupBox):
+class StatusPanel(QWidget):
     """상태 표시 및 로그 패널"""
 
     def __init__(self, connection_panel):
-        super().__init__("상태 및 로그")
+        super().__init__()
         self.connection_panel = connection_panel
         self.init_ui()
 
     def init_ui(self):
+        self.setContentsMargins(2, 2, 2, 2)
         layout = QVBoxLayout()
 
         # 장치 정보
@@ -840,7 +835,7 @@ class MSCF16MainWindow(QMainWindow):
 
     def init_ui(self):
         self.setWindowTitle("MSCF-16 NIM Device Controller")
-        self.setGeometry(100, 100, 1200, 800)
+        self.setGeometry(100, 100, 1000, 700)
 
         # Central widget
         central_widget = QWidget()
@@ -856,9 +851,11 @@ class MSCF16MainWindow(QMainWindow):
 
         # Tab widget
         tab_widget = QTabWidget()
+        tab_widget.setContentsMargins(0, 0, 0, 0)
 
         # Combined control tab
         combined_tab = CombinedControlPanel(self.connection_panel)
+        combined_tab.setContentsMargins(0, 0, 0, 0)
         tab_widget.addTab(combined_tab, "Channel & Group Control")
 
         # Advanced control tab
