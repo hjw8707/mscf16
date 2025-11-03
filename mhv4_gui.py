@@ -36,6 +36,7 @@ class ChannelPanel(QFrame):
         self.target_voltage = 0.0  # Target voltage in V
         self.current_voltage = 0.0  # Current voltage in V
         self.is_ramping = False
+        self.ramp_to_zero_before_off = False  # Flag to turn off after ramping to zero
 
     def init_ui(self):
         """Initialize channel panel UI"""
@@ -45,25 +46,35 @@ class ChannelPanel(QFrame):
                 border: 2px solid #666;
                 border-radius: 5px;
                 background-color: #ffffcc;
-                padding: 5px;
+                padding: 2px;
             }
         """)
 
         layout = QVBoxLayout()
-        layout.setSpacing(5)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(2)
+        layout.setContentsMargins(3, 3, 3, 3)
 
-        # Channel label
+        # Channel label with polarity selection at the top
         channel_label = QLabel(f"HV {self.channel_num}")
-        channel_label.setFont(QFont("Arial", 12, QFont.Bold))
+        channel_label.setFont(QFont("Arial", 11, QFont.Bold))
         channel_layout = QHBoxLayout()
         channel_layout.addWidget(channel_label)
         channel_layout.addStretch()
 
+        # Polarity selection (dropdown) - moved to top
+        polarity_select_layout = QHBoxLayout()
+        polarity_select_layout.addWidget(QLabel("Polarity:"))
+        self.polarity_combo = QComboBox()
+        self.polarity_combo.addItems(["+", "-"])
+        self.polarity_combo.setCurrentIndex(0)  # Default to positive
+        self.polarity_combo.currentIndexChanged.connect(self._on_polarity_changed)
+        polarity_select_layout.addWidget(self.polarity_combo)
+        channel_layout.addLayout(polarity_select_layout)
+
         # Polarity indicators
         polarity_layout = QHBoxLayout()
         self.positive_indicator = QLabel("+")
-        self.positive_indicator.setFixedSize(20, 20)
+        self.positive_indicator.setFixedSize(18, 18)
         self.positive_indicator.setAlignment(Qt.AlignCenter)
         self.positive_indicator.setStyleSheet("""
             QLabel {
@@ -75,7 +86,7 @@ class ChannelPanel(QFrame):
             }
         """)
         self.negative_indicator = QLabel("-")
-        self.negative_indicator.setFixedSize(20, 20)
+        self.negative_indicator.setFixedSize(18, 18)
         self.negative_indicator.setAlignment(Qt.AlignCenter)
         self.negative_indicator.setStyleSheet("""
             QLabel {
@@ -92,7 +103,7 @@ class ChannelPanel(QFrame):
 
         # Power ON indicator (default to OFF)
         self.power_indicator = QLabel("OFF")
-        self.power_indicator.setFixedSize(40, 25)
+        self.power_indicator.setFixedSize(35, 20)
         self.power_indicator.setAlignment(Qt.AlignCenter)
         self.power_indicator.setStyleSheet("""
             QLabel {
@@ -113,18 +124,22 @@ class ChannelPanel(QFrame):
 
         # Voltage display
         voltage_container = QVBoxLayout()
+        voltage_container.setSpacing(1)
         voltage_label = QLabel("Voltage (V)")
         voltage_label.setAlignment(Qt.AlignCenter)
-        voltage_label.setFont(QFont("Arial", 18))
+        voltage_label.setFont(QFont("Arial", 15))
+        voltage_label.setMaximumHeight(25)
         voltage_container.addWidget(voltage_label)
         self.voltage_display = QLCDNumber()
         self.voltage_display.setDigitCount(6)
         self.voltage_display.setSegmentStyle(QLCDNumber.Flat)
+        self.voltage_display.setMinimumHeight(35)
+        self.voltage_display.setMaximumHeight(40)
         self.voltage_display.setStyleSheet("""
             QLCDNumber {
                 background-color: #000000;
                 color: #FF0000;
-                border: 2px solid #333;
+                border: 1px solid #333;
             }
         """)
         self.voltage_display.display("000.0")
@@ -133,18 +148,22 @@ class ChannelPanel(QFrame):
 
         # Current display
         current_container = QVBoxLayout()
+        current_container.setSpacing(1)
         current_label = QLabel("Current (μA)")
         current_label.setAlignment(Qt.AlignCenter)
-        current_label.setFont(QFont("Arial", 18))
+        current_label.setFont(QFont("Arial", 15))
+        current_label.setMaximumHeight(25)
         current_container.addWidget(current_label)
         self.current_display = QLCDNumber()
         self.current_display.setDigitCount(6)
         self.current_display.setSegmentStyle(QLCDNumber.Flat)
+        self.current_display.setMinimumHeight(35)
+        self.current_display.setMaximumHeight(40)
         self.current_display.setStyleSheet("""
             QLCDNumber {
                 background-color: #000000;
                 color: #FF0000;
-                border: 2px solid #333;
+                border: 1px solid #333;
             }
         """)
         self.current_display.display("0.000")
@@ -165,7 +184,7 @@ class ChannelPanel(QFrame):
         self.voltage_preset_input.setSingleStep(0.1)
         voltage_preset_layout.addWidget(self.voltage_preset_input)
         self.set_voltage_preset_btn = QPushButton("Set")
-        self.set_voltage_preset_btn.setFixedSize(60, 25)
+        self.set_voltage_preset_btn.setFixedSize(50, 22)
         self.set_voltage_preset_btn.clicked.connect(self.set_voltage_preset)
         voltage_preset_layout.addWidget(self.set_voltage_preset_btn)
         control_layout.addLayout(voltage_preset_layout)
@@ -179,7 +198,7 @@ class ChannelPanel(QFrame):
         self.voltage_limit_input.setSingleStep(0.1)
         voltage_limit_layout.addWidget(self.voltage_limit_input)
         self.set_voltage_limit_btn = QPushButton("Set")
-        self.set_voltage_limit_btn.setFixedSize(60, 25)
+        self.set_voltage_limit_btn.setFixedSize(50, 22)
         self.set_voltage_limit_btn.clicked.connect(self.set_voltage_limit)
         voltage_limit_layout.addWidget(self.set_voltage_limit_btn)
         control_layout.addLayout(voltage_limit_layout)
@@ -194,62 +213,51 @@ class ChannelPanel(QFrame):
         self.current_limit_input.setSuffix(" μA")
         current_limit_layout.addWidget(self.current_limit_input)
         self.set_current_limit_btn = QPushButton("Set")
-        self.set_current_limit_btn.setFixedSize(60, 25)
+        self.set_current_limit_btn.setFixedSize(50, 22)
         self.set_current_limit_btn.clicked.connect(self.set_current_limit)
         current_limit_layout.addWidget(self.set_current_limit_btn)
         control_layout.addLayout(current_limit_layout)
 
-        # Polarity selection (dropdown)
-        polarity_select_layout = QHBoxLayout()
-        polarity_select_layout.addWidget(QLabel("Polarity:"))
-        self.polarity_combo = QComboBox()
-        self.polarity_combo.addItems(["+", "-"])
-        self.polarity_combo.setCurrentIndex(0)  # Default to positive
-        self.polarity_combo.currentIndexChanged.connect(self._on_polarity_changed)
-        polarity_select_layout.addWidget(self.polarity_combo)
-        polarity_select_layout.addStretch()
-        control_layout.addLayout(polarity_select_layout)
-
         # Custom ramping settings
         ramp_group = QGroupBox("Custom Ramping")
         ramp_group_layout = QVBoxLayout()
+        ramp_group_layout.setSpacing(2)
+        ramp_group_layout.setContentsMargins(5, 8, 5, 3)
 
         # Enable custom ramping checkbox
         self.custom_ramp_checkbox = QCheckBox("Enable Custom Ramping")
         self.custom_ramp_checkbox.stateChanged.connect(self._on_custom_ramp_changed)
         ramp_group_layout.addWidget(self.custom_ramp_checkbox)
 
-        # Voltage step input
-        voltage_step_layout = QHBoxLayout()
-        voltage_step_layout.addWidget(QLabel("Voltage Step:"))
+        # Voltage step and time interval in one line
+        step_interval_layout = QHBoxLayout()
+        step_interval_layout.addWidget(QLabel("Step:"))
         self.voltage_step_spin = QDoubleSpinBox()
         self.voltage_step_spin.setRange(0.1, 100.0)
         self.voltage_step_spin.setValue(1.0)  # Default 1V per step
         self.voltage_step_spin.setSuffix(" V")
         self.voltage_step_spin.setSingleStep(0.1)
-        voltage_step_layout.addWidget(self.voltage_step_spin)
-        ramp_group_layout.addLayout(voltage_step_layout)
+        step_interval_layout.addWidget(self.voltage_step_spin)
 
-        # Time interval input
-        time_interval_layout = QHBoxLayout()
-        time_interval_layout.addWidget(QLabel("Time Interval:"))
+        step_interval_layout.addWidget(QLabel("Interval:"))
         self.time_interval_spin = QSpinBox()
         self.time_interval_spin.setRange(1, 60)  # 1s to 60s
         self.time_interval_spin.setValue(1)  # Default 1s
         self.time_interval_spin.setSuffix(" s")
         self.time_interval_spin.setSingleStep(1)
-        time_interval_layout.addWidget(self.time_interval_spin)
-        ramp_group_layout.addLayout(time_interval_layout)
+        step_interval_layout.addWidget(self.time_interval_spin)
+        step_interval_layout.addStretch()
+        ramp_group_layout.addLayout(step_interval_layout)
 
         # Stop ramping button with status indicator
         stop_ramp_layout = QHBoxLayout()
 
         # Ramping status indicator with text
         status_indicator_layout = QHBoxLayout()
-        status_indicator_layout.setSpacing(5)
+        status_indicator_layout.setSpacing(3)
 
         self.ramp_status_indicator = QLabel("●")
-        self.ramp_status_indicator.setFixedSize(20, 20)
+        self.ramp_status_indicator.setFixedSize(18, 18)
         self.ramp_status_indicator.setAlignment(Qt.AlignCenter)
         self.ramp_status_indicator.setStyleSheet("""
             QLabel {
@@ -278,8 +286,8 @@ class ChannelPanel(QFrame):
             }
         """)
         self.stop_ramp_btn.clicked.connect(self.stop_ramping)
-        stop_ramp_layout.addWidget(self.stop_ramp_btn)
         stop_ramp_layout.addStretch()
+        stop_ramp_layout.addWidget(self.stop_ramp_btn)
         ramp_group_layout.addLayout(stop_ramp_layout)
 
         ramp_group.setLayout(ramp_group_layout)
@@ -319,6 +327,8 @@ class ChannelPanel(QFrame):
         temp_comp_layout = QVBoxLayout()
         temp_comp_group = QGroupBox("Temperature Compensation")
         temp_comp_group_layout = QVBoxLayout()
+        temp_comp_group_layout.setSpacing(2)
+        temp_comp_group_layout.setContentsMargins(5, 8, 5, 3)
 
         # NTC channel selection
         ntc_layout = QHBoxLayout()
@@ -405,27 +415,28 @@ class ChannelPanel(QFrame):
                     interval_ms = self.time_interval_spin.value() * 1000
                     self.custom_ramp_timer.start(interval_ms)
             else:
-                # Stop custom ramping if active
-                if self.is_ramping:
+                # Stop custom ramping if active (but not if we're about to ramp to zero)
+                if self.is_ramping and not self.ramp_to_zero_before_off:
                     self.custom_ramp_timer.stop()
                     self.is_ramping = False
                     self._update_ramp_status_indicator()
 
-                # If custom ramping is enabled, set the preset voltage 0 after turning off
-                # and save the preset voltage value (value_01v) for later use after turning off
-                # and ramping down to 0V before turning off
+                # If custom ramping is enabled, ramp down to 0V before turning off
                 if self.custom_ramp_checkbox.isChecked():
                     self._update_current_voltage()
                     self.target_voltage = 0.0
                     if abs(self.current_voltage) > 0.01:
+                        # Set flag to turn off after ramping completes
+                        self.ramp_to_zero_before_off = True
                         self.is_ramping = True
                         self._update_ramp_status_indicator()
                         interval_ms = self.time_interval_spin.value() * 1000
                         self.custom_ramp_timer.start(interval_ms)
-                        # Wait for ramping to finish
-                        while self.is_ramping:
-                            QApplication.processEvents()
+                        # Update UI immediately to show ramping status
+                        # turn_off will be called in _ramp_step when ramping completes
+                        return  # Exit early, turn_off will be called by _ramp_step
 
+                # Turn off immediately if not ramping or already at 0V
                 self.controller.turn_off(self.channel_num)
                 self.power_indicator.setText("OFF")
                 self.power_indicator.setStyleSheet("""
@@ -747,6 +758,24 @@ class ChannelPanel(QFrame):
                 value_01v = int(self.target_voltage * 10)
                 self.controller.set_voltage(self.channel_num, value_01v)
                 self.current_voltage = self.target_voltage
+
+                # If this was ramping to zero before turning off, turn off now
+                if self.ramp_to_zero_before_off:
+                    self.ramp_to_zero_before_off = False
+                    try:
+                        self.controller.turn_off(self.channel_num)
+                        self.power_indicator.setText("OFF")
+                        self.power_indicator.setStyleSheet("""
+                            QLabel {
+                                background-color: #CCCCCC;
+                                color: black;
+                                border: 1px solid #333;
+                                border-radius: 3px;
+                                font-weight: bold;
+                            }
+                        """)
+                    except MHV4Error as e:
+                        QMessageBox.critical(self, "Error", f"Failed to turn off after ramping:\n{str(e)}")
             else:
                 # Move one step toward target
                 if remaining > 0:
@@ -1017,13 +1046,13 @@ class ModulePanel(QWidget):
     def init_ui(self):
         """Initialize module panel UI"""
         layout = QVBoxLayout()
-        layout.setSpacing(5)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(3)
+        layout.setContentsMargins(3, 3, 3, 3)
 
         # Module header
         header_layout = QHBoxLayout()
         header_label = QLabel("MHV-4 - 4 Channel 800V High Voltage Supply")
-        header_label.setFont(QFont("Arial", 14, QFont.Bold))
+        header_label.setFont(QFont("Arial", 11, QFont.Bold))
         header_layout.addWidget(header_label)
         header_layout.addStretch()
 
@@ -1041,6 +1070,8 @@ class ModulePanel(QWidget):
 
         # Channel panels (4 channels in a grid)
         channels_layout = QGridLayout()
+        channels_layout.setSpacing(3)
+        channels_layout.setContentsMargins(2, 2, 2, 2)
         self.channel_panels = []
         for ch in range(4):
             panel = ChannelPanel(ch, self.controller)
@@ -1131,8 +1162,8 @@ class ConnectionPanel(QGroupBox):
     def init_ui(self):
         """Initialize connection panel UI"""
         layout = QGridLayout()
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(5)
+        layout.setContentsMargins(3, 3, 3, 3)
+        layout.setSpacing(3)
 
         # Port selection
         layout.addWidget(QLabel("Port:"), 0, 0)
@@ -1234,7 +1265,7 @@ class MHV4MainWindow(QMainWindow):
     def init_ui(self):
         """Initialize main window UI"""
         self.setWindowTitle("MHV-4 NIM Device Controller")
-        self.setGeometry(100, 100, 1400, 900)
+        self.setGeometry(100, 100, 1000, 650)
 
         # Central widget
         central_widget = QWidget()
@@ -1242,8 +1273,8 @@ class MHV4MainWindow(QMainWindow):
 
         # Main layout
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(5, 5, 5, 5)
-        main_layout.setSpacing(5)
+        main_layout.setContentsMargins(3, 3, 3, 3)
+        main_layout.setSpacing(3)
 
         # Module management section
         module_mgmt_layout = QHBoxLayout()
