@@ -241,6 +241,47 @@ class ChannelPanel(QFrame):
         time_interval_layout.addWidget(self.time_interval_spin)
         ramp_group_layout.addLayout(time_interval_layout)
 
+        # Stop ramping button with status indicator
+        stop_ramp_layout = QHBoxLayout()
+
+        # Ramping status indicator with text
+        status_indicator_layout = QHBoxLayout()
+        status_indicator_layout.setSpacing(5)
+
+        self.ramp_status_indicator = QLabel("●")
+        self.ramp_status_indicator.setFixedSize(20, 20)
+        self.ramp_status_indicator.setAlignment(Qt.AlignCenter)
+        self.ramp_status_indicator.setStyleSheet("""
+            QLabel {
+                background-color: #CCCCCC;
+                border: 1px solid #333;
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: bold;
+                color: #666666;
+            }
+        """)
+        status_indicator_layout.addWidget(self.ramp_status_indicator)
+
+        self.ramp_status_label = QLabel("Stopped")
+        self.ramp_status_label.setStyleSheet("font-weight: bold;")
+        status_indicator_layout.addWidget(self.ramp_status_label)
+        status_indicator_layout.addStretch()
+
+        stop_ramp_layout.addLayout(status_indicator_layout)
+
+        self.stop_ramp_btn = QPushButton("Stop Ramping")
+        self.stop_ramp_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #FFCCCC;
+                font-weight: bold;
+            }
+        """)
+        self.stop_ramp_btn.clicked.connect(self.stop_ramping)
+        stop_ramp_layout.addWidget(self.stop_ramp_btn)
+        stop_ramp_layout.addStretch()
+        ramp_group_layout.addLayout(stop_ramp_layout)
+
         ramp_group.setLayout(ramp_group_layout)
         control_layout.addWidget(ramp_group)
 
@@ -326,6 +367,17 @@ class ChannelPanel(QFrame):
 
         try:
             if on:
+                # Stop any existing ramping first
+                if self.is_ramping:
+                    self.custom_ramp_timer.stop()
+                    self.is_ramping = False
+
+                # If custom ramping is enabled, set the preset voltage 0 first before turning on
+                # and saving the preset voltage value (value_01v) for later use in the ramping process
+                if self.custom_ramp_checkbox.isChecked():
+                    value_01v = int(self.voltage_preset_input.value() * 10)
+                    self.controller.set_voltage(self.channel_num, 0)
+
                 self.controller.turn_on(self.channel_num)
                 self.power_indicator.setText("ON")
                 self.power_indicator.setStyleSheet("""
@@ -337,11 +389,43 @@ class ChannelPanel(QFrame):
                         font-weight: bold;
                     }
                 """)
+
+                # If custom ramping is enabled, ramp to preset voltage
+                if self.custom_ramp_checkbox.isChecked():
+                    # Get current voltage reading
+                    self._update_current_voltage()
+                    self.voltage_preset_input.setValue(value_01v / 10.0)
+                    # Set target voltage to preset value
+                    self.target_voltage = self.voltage_preset_input.value()
+
+                # Start ramping if target is different from current
+                if abs(self.target_voltage - self.current_voltage) > 0.01:
+                    self.is_ramping = True
+                    self._update_ramp_status_indicator()
+                    interval_ms = self.time_interval_spin.value() * 1000
+                    self.custom_ramp_timer.start(interval_ms)
             else:
                 # Stop custom ramping if active
                 if self.is_ramping:
                     self.custom_ramp_timer.stop()
                     self.is_ramping = False
+                    self._update_ramp_status_indicator()
+
+                # If custom ramping is enabled, set the preset voltage 0 after turning off
+                # and save the preset voltage value (value_01v) for later use after turning off
+                # and ramping down to 0V before turning off
+                if self.custom_ramp_checkbox.isChecked():
+                    self._update_current_voltage()
+                    self.target_voltage = 0.0
+                    if abs(self.current_voltage) > 0.01:
+                        self.is_ramping = True
+                        self._update_ramp_status_indicator()
+                        interval_ms = self.time_interval_spin.value() * 1000
+                        self.custom_ramp_timer.start(interval_ms)
+                        # Wait for ramping to finish
+                        while self.is_ramping:
+                            QApplication.processEvents()
+
                 self.controller.turn_off(self.channel_num)
                 self.power_indicator.setText("OFF")
                 self.power_indicator.setStyleSheet("""
@@ -355,6 +439,10 @@ class ChannelPanel(QFrame):
                 """)
         except MHV4Error as e:
             QMessageBox.critical(self, "Error", f"Failed to toggle power:\n{str(e)}")
+            if self.is_ramping:
+                self.custom_ramp_timer.stop()
+                self.is_ramping = False
+                self._update_ramp_status_indicator()
 
     def set_voltage_preset(self):
         """Set voltage preset value"""
@@ -371,6 +459,7 @@ class ChannelPanel(QFrame):
                 if self.is_ramping:
                     self.custom_ramp_timer.stop()
                     self.is_ramping = False
+                    self._update_ramp_status_indicator()
 
                 # Get current voltage reading
                 self._update_current_voltage()
@@ -381,6 +470,7 @@ class ChannelPanel(QFrame):
                 # Start ramping if target is different from current
                 if abs(self.target_voltage - self.current_voltage) > 0.01:
                     self.is_ramping = True
+                    self._update_ramp_status_indicator()
                     interval_ms = self.time_interval_spin.value() * 1000
                     self.custom_ramp_timer.start(interval_ms)
                 else:
@@ -396,6 +486,7 @@ class ChannelPanel(QFrame):
             if self.is_ramping:
                 self.custom_ramp_timer.stop()
                 self.is_ramping = False
+                self._update_ramp_status_indicator()
 
     def set_voltage_limit(self):
         """Set voltage limit value"""
@@ -510,6 +601,52 @@ class ChannelPanel(QFrame):
             if self.is_ramping:
                 self.custom_ramp_timer.stop()
                 self.is_ramping = False
+                self._update_ramp_status_indicator()
+
+    def _update_ramp_status_indicator(self):
+        """Update ramping status indicator"""
+        if self.is_ramping:
+            self.ramp_status_indicator.setStyleSheet("""
+                QLabel {
+                    background-color: #90EE90;
+                    border: 1px solid #333;
+                    border-radius: 10px;
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: #006400;
+                }
+            """)
+            self.ramp_status_label.setText("Active")
+            self.ramp_status_label.setStyleSheet("font-weight: bold; color: #006400;")
+        else:
+            self.ramp_status_indicator.setStyleSheet("""
+                QLabel {
+                    background-color: #CCCCCC;
+                    border: 1px solid #333;
+                    border-radius: 10px;
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: #666666;
+                }
+            """)
+            self.ramp_status_label.setText("Stopped")
+            self.ramp_status_label.setStyleSheet("font-weight: bold; color: #666666;")
+
+    def stop_ramping(self):
+        """Stop custom ramping at current voltage"""
+        if self.is_ramping:
+            self.custom_ramp_timer.stop()
+            self.is_ramping = False
+            self._update_ramp_status_indicator()
+            # Optionally update the preset input to current voltage
+            try:
+                self._update_current_voltage()
+                if self.controller.is_connected:
+                    self.voltage_preset_input.blockSignals(True)
+                    self.voltage_preset_input.setValue(self.current_voltage)
+                    self.voltage_preset_input.blockSignals(False)
+            except:
+                pass
 
     def set_polarity(self, polarity: str):
         """Set polarity (positive or negative)"""
@@ -590,6 +727,7 @@ class ChannelPanel(QFrame):
         if not self.controller.is_connected or not self.is_ramping:
             self.custom_ramp_timer.stop()
             self.is_ramping = False
+            self._update_ramp_status_indicator()
             return
 
         try:
@@ -604,6 +742,7 @@ class ChannelPanel(QFrame):
                 # Reached target, stop ramping
                 self.custom_ramp_timer.stop()
                 self.is_ramping = False
+                self._update_ramp_status_indicator()
                 # Set final voltage to ensure exact target
                 value_01v = int(self.target_voltage * 10)
                 self.controller.set_voltage(self.channel_num, value_01v)
@@ -625,11 +764,13 @@ class ChannelPanel(QFrame):
             # Stop ramping on error
             self.custom_ramp_timer.stop()
             self.is_ramping = False
+            self._update_ramp_status_indicator()
             QMessageBox.critical(self, "Error", f"Failed during ramping:\n{str(e)}")
         except Exception as e:
             # Stop ramping on any error
             self.custom_ramp_timer.stop()
             self.is_ramping = False
+            self._update_ramp_status_indicator()
 
     def update_readings(self):
         """Update voltage and current readings"""
