@@ -30,6 +30,13 @@ class ChannelPanel(QFrame):
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_readings)
 
+        # Custom ramping variables
+        self.custom_ramp_timer = QTimer()
+        self.custom_ramp_timer.timeout.connect(self._ramp_step)
+        self.target_voltage = 0.0  # Target voltage in V
+        self.current_voltage = 0.0  # Current voltage in V
+        self.is_ramping = False
+
     def init_ui(self):
         """Initialize channel panel UI"""
         self.setFrameStyle(QFrame.Box)
@@ -203,6 +210,40 @@ class ChannelPanel(QFrame):
         polarity_select_layout.addStretch()
         control_layout.addLayout(polarity_select_layout)
 
+        # Custom ramping settings
+        ramp_group = QGroupBox("Custom Ramping")
+        ramp_group_layout = QVBoxLayout()
+
+        # Enable custom ramping checkbox
+        self.custom_ramp_checkbox = QCheckBox("Enable Custom Ramping")
+        self.custom_ramp_checkbox.stateChanged.connect(self._on_custom_ramp_changed)
+        ramp_group_layout.addWidget(self.custom_ramp_checkbox)
+
+        # Voltage step input
+        voltage_step_layout = QHBoxLayout()
+        voltage_step_layout.addWidget(QLabel("Voltage Step:"))
+        self.voltage_step_spin = QDoubleSpinBox()
+        self.voltage_step_spin.setRange(0.1, 100.0)
+        self.voltage_step_spin.setValue(1.0)  # Default 1V per step
+        self.voltage_step_spin.setSuffix(" V")
+        self.voltage_step_spin.setSingleStep(0.1)
+        voltage_step_layout.addWidget(self.voltage_step_spin)
+        ramp_group_layout.addLayout(voltage_step_layout)
+
+        # Time interval input
+        time_interval_layout = QHBoxLayout()
+        time_interval_layout.addWidget(QLabel("Time Interval:"))
+        self.time_interval_spin = QSpinBox()
+        self.time_interval_spin.setRange(1, 60)  # 1s to 60s
+        self.time_interval_spin.setValue(1)  # Default 1s
+        self.time_interval_spin.setSuffix(" s")
+        self.time_interval_spin.setSingleStep(1)
+        time_interval_layout.addWidget(self.time_interval_spin)
+        ramp_group_layout.addLayout(time_interval_layout)
+
+        ramp_group.setLayout(ramp_group_layout)
+        control_layout.addWidget(ramp_group)
+
         # Auto shutdown checkbox
         auto_shutdown_layout = QHBoxLayout()
         self.auto_shutdown_checkbox = QCheckBox("Auto Shutdown")
@@ -297,6 +338,10 @@ class ChannelPanel(QFrame):
                     }
                 """)
             else:
+                # Stop custom ramping if active
+                if self.is_ramping:
+                    self.custom_ramp_timer.stop()
+                    self.is_ramping = False
                 self.controller.turn_off(self.channel_num)
                 self.power_indicator.setText("OFF")
                 self.power_indicator.setStyleSheet("""
@@ -318,12 +363,39 @@ class ChannelPanel(QFrame):
             return
 
         try:
-            value = self.voltage_preset_input.value()
-            # Convert V to 0.1V units
-            value_01v = int(value * 10)
-            self.controller.set_voltage(self.channel_num, value_01v)
+            target_value = self.voltage_preset_input.value()
+
+            # Check if custom ramping is enabled
+            if self.custom_ramp_checkbox.isChecked():
+                # Stop any existing ramping
+                if self.is_ramping:
+                    self.custom_ramp_timer.stop()
+                    self.is_ramping = False
+
+                # Get current voltage reading
+                self._update_current_voltage()
+
+                # Set target voltage
+                self.target_voltage = target_value
+
+                # Start ramping if target is different from current
+                if abs(self.target_voltage - self.current_voltage) > 0.01:
+                    self.is_ramping = True
+                    interval_ms = self.time_interval_spin.value() * 1000
+                    self.custom_ramp_timer.start(interval_ms)
+                else:
+                    # Already at target, set directly
+                    value_01v = int(target_value * 10)
+                    self.controller.set_voltage(self.channel_num, value_01v)
+            else:
+                # Use device's built-in ramping
+                value_01v = int(target_value * 10)
+                self.controller.set_voltage(self.channel_num, value_01v)
         except MHV4Error as e:
             QMessageBox.critical(self, "Error", f"Failed to set voltage preset:\n{str(e)}")
+            if self.is_ramping:
+                self.custom_ramp_timer.stop()
+                self.is_ramping = False
 
     def set_voltage_limit(self):
         """Set voltage limit value"""
@@ -431,6 +503,14 @@ class ChannelPanel(QFrame):
             self.slope_spin.setValue(800)
             self.slope_spin.blockSignals(False)
 
+    def _on_custom_ramp_changed(self, state: int):
+        """Handle custom ramping checkbox change"""
+        if state != Qt.Checked:
+            # If unchecked, stop any active ramping
+            if self.is_ramping:
+                self.custom_ramp_timer.stop()
+                self.is_ramping = False
+
     def set_polarity(self, polarity: str):
         """Set polarity (positive or negative)"""
         if not self.controller.is_connected:
@@ -483,10 +563,79 @@ class ChannelPanel(QFrame):
             self.polarity_combo.blockSignals(False)
             QMessageBox.critical(self, "Error", f"Failed to set polarity:\n{str(e)}")
 
+    def _update_current_voltage(self):
+        """Update current voltage reading from device"""
+        try:
+            voltage_response = self.controller.read_voltage(self.channel_num)
+            if voltage_response:
+                parts = voltage_response.strip().split()
+                for part in reversed(parts):
+                    try:
+                        value = float(part)
+                        if value > 8000:
+                            self.current_voltage = value / 10.0
+                        elif value > 800:
+                            self.current_voltage = value / 10.0
+                        elif -800 <= value <= 800:
+                            self.current_voltage = abs(value)
+                            return
+                    except ValueError:
+                        continue
+        except:
+            # If we can't read current voltage, keep existing value
+            pass
+
+    def _ramp_step(self):
+        """Perform one step of custom ramping"""
+        if not self.controller.is_connected or not self.is_ramping:
+            self.custom_ramp_timer.stop()
+            self.is_ramping = False
+            return
+
+        try:
+            # Update current voltage reading
+            self._update_current_voltage()
+
+            # Calculate next voltage step
+            voltage_step = self.voltage_step_spin.value()
+            remaining = self.target_voltage - self.current_voltage
+
+            if abs(remaining) < 0.01:
+                # Reached target, stop ramping
+                self.custom_ramp_timer.stop()
+                self.is_ramping = False
+                # Set final voltage to ensure exact target
+                value_01v = int(self.target_voltage * 10)
+                self.controller.set_voltage(self.channel_num, value_01v)
+                self.current_voltage = self.target_voltage
+            else:
+                # Move one step toward target
+                if remaining > 0:
+                    # Ramping up
+                    next_voltage = min(self.current_voltage + voltage_step, self.target_voltage)
+                else:
+                    # Ramping down
+                    next_voltage = max(self.current_voltage - voltage_step, self.target_voltage)
+
+                # Set the voltage
+                value_01v = int(next_voltage * 10)
+                self.controller.set_voltage(self.channel_num, value_01v)
+                self.current_voltage = next_voltage
+        except MHV4Error as e:
+            # Stop ramping on error
+            self.custom_ramp_timer.stop()
+            self.is_ramping = False
+            QMessageBox.critical(self, "Error", f"Failed during ramping:\n{str(e)}")
+        except Exception as e:
+            # Stop ramping on any error
+            self.custom_ramp_timer.stop()
+            self.is_ramping = False
+
     def update_readings(self):
         """Update voltage and current readings"""
         if not self.controller.is_connected:
             return
+
 
         try:
             # Update voltage
@@ -636,24 +785,33 @@ class ChannelPanel(QFrame):
                 # Parse NTC channel from response
                 self.ntc_combo.blockSignals(True)
                 parts = response.split()
-                found = False
-                for part in parts:
-                    if part.lower() in ['off', '-', '4']:
-                        self.ntc_combo.setCurrentIndex(0)  # Off
-                        found = True
-                        break
-                    try:
-                        ntc_num = int(part)
-                        if 0 <= ntc_num <= 3:
-                            self.ntc_combo.setCurrentIndex(ntc_num + 1)  # NTC0 = index 1
-                            found = True
-                            break
-                    except ValueError:
-                        continue
-                if not found:
-                    self.ntc_combo.setCurrentIndex(0)  # Default to Off
+                parts[4] = parts[4][:-1]
+                if parts[4].lower() in ['off', '-', '4']:
+                    self.ntc_combo.setCurrentIndex(0)  # Off
+                else:
+                    self.ntc_combo.setCurrentIndex(int(parts[4]) + 1)  # NTC0 = index 1
                 self.ntc_combo.blockSignals(False)
-            except:
+
+                # Load reference temperature
+                try:
+                    self.ref_temp_spin.blockSignals(True)
+                    self.ref_temp_spin.setValue(float(parts[6]))
+                    self.ref_temp_spin.blockSignals(False)
+                except (IndexError, ValueError) as e:
+                    self.ref_temp_spin.blockSignals(False)  # Ensure signals are unblocked
+
+                # Load temperature slope
+                try:
+                    self.slope_spin.blockSignals(True)
+                    self.slope_spin.setValue(int(parts[9]))
+                    self.slope_spin.blockSignals(False)
+                except (IndexError, ValueError) as e:
+                    self.slope_spin.blockSignals(False)  # Ensure signals are unblocked even on error
+            except Exception as e:
+                # Ensure all signals are unblocked even if there's an error
+                self.ntc_combo.blockSignals(False)
+                self.ref_temp_spin.blockSignals(False)
+                self.slope_spin.blockSignals(False)
                 pass
 
             # Load reference temperature
@@ -784,7 +942,6 @@ class ModulePanel(QWidget):
         # Load ramp speed
         try:
             response = self.controller.read_ramp_speed()
-            print(response)
             if response:
                 # Parse ramp speed index from response
                 # Format might be like "RRA 1" or just "1" where 1 is the index
