@@ -242,7 +242,7 @@ class ControlPanel(QWidget):
                 channel_num = row * 8 + col + 1
 
                 # Channel number label
-                channel_label = QLabel(f"CH{channel_num}")
+                channel_label = QLabel(f"CH{channel_num:02d}")
                 channel_label.setFixedWidth(35)
                 individual_pz_layout.addWidget(channel_label, row, 3*col, alignment=Qt.AlignVCenter)
 
@@ -295,7 +295,7 @@ class ControlPanel(QWidget):
         monitor_layout.setSpacing(2)
         monitor_layout.addWidget(QLabel("Monitor Channel:"))
         self.monitor_combo = QComboBox()
-        self.monitor_combo.addItems([f"CH{i}" for i in range(1, 17)])
+        self.monitor_combo.addItems([f"CH{i:02d}" for i in range(1, 17)])
         self.monitor_combo.setCurrentIndex(0)
         self.monitor_combo.currentIndexChanged.connect(self._on_monitor_channel_changed)
         monitor_layout.addWidget(self.monitor_combo, alignment=Qt.AlignVCenter)
@@ -313,7 +313,7 @@ class ControlPanel(QWidget):
         auto_pz_layout.addWidget(QLabel("Channel:"))
         self.auto_pz_combo = QComboBox()
         self.auto_pz_combo.addItem("All")
-        self.auto_pz_combo.addItems([f"CH{i}" for i in range(1, 17)])
+        self.auto_pz_combo.addItems([f"CH{i:02d}" for i in range(1, 17)])
         self.auto_pz_combo.setCurrentIndex(0)
         auto_pz_layout.addWidget(self.auto_pz_combo, alignment=Qt.AlignVCenter)
 
@@ -481,7 +481,19 @@ class ControlPanel(QWidget):
         self.threshold_offset_btn.setFixedSize(50, 24)
         self.threshold_offset_btn.clicked.connect(self.set_threshold_offset)
         general_layout.addWidget(self.threshold_offset_btn, 0, 8, alignment=Qt.AlignTop)
-        general_layout.setColumnStretch(9, 1)
+
+        general_layout.addWidget(QLabel("BLR Threshold:"), 0, 9)
+        self.blr_threshold_spin = QSpinBox()
+        self.blr_threshold_spin.setRange(0, 255)
+        self.blr_threshold_spin.setValue(128)
+        self.blr_threshold_spin.setFixedWidth(60)
+        general_layout.addWidget(self.blr_threshold_spin, 0, 10)
+
+        self.blr_threshold_btn = QPushButton("Set")
+        self.blr_threshold_btn.setFixedSize(50, 24)
+        self.blr_threshold_btn.clicked.connect(self.set_blr_threshold)
+        general_layout.addWidget(self.blr_threshold_btn, 0, 11, alignment=Qt.AlignTop)
+        general_layout.setColumnStretch(12, 1)
 
         # Multiplicity settings in one line
         general_layout.addWidget(QLabel("Multiplicity High:"), 1, 0)
@@ -502,6 +514,13 @@ class ControlPanel(QWidget):
         self.multiplicity_btn.setFixedSize(50, 24)
         self.multiplicity_btn.clicked.connect(self.set_multiplicity_borders)
         general_layout.addWidget(self.multiplicity_btn, 1, 5, alignment=Qt.AlignTop)
+
+        general_layout.addWidget(QLabel("Timing Filter Int. Time:"), 1, 6)
+        self.timing_filter_combo = QComboBox()
+        self.timing_filter_combo.addItems(["0", "1", "2", "3"])
+        self.timing_filter_combo.setCurrentIndex(0)
+        self.timing_filter_combo.currentIndexChanged.connect(self.set_timing_filter)
+        general_layout.addWidget(self.timing_filter_combo, 1, 7, alignment=Qt.AlignVCenter)
 
         general_group.setLayout(general_layout)
         layout.addWidget(general_group)
@@ -667,6 +686,20 @@ class ControlPanel(QWidget):
         except MSCF16Error as e:
             QMessageBox.critical(self, "Error", f"Threshold Offset setting failed:\n{str(e)}")
 
+    def set_blr_threshold(self):
+        """Set BLR Threshold"""
+        if not self.connection_panel.is_connected:
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
+            return
+
+        try:
+            value = self.blr_threshold_spin.value()
+            self.connection_panel.controller.set_blr_threshold(value)
+            QMessageBox.information(self, "Success", f"BLR Threshold set to {value}.")
+
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"BLR Threshold setting failed:\n{str(e)}")
+
     def set_multiplicity_borders(self):
         """Set Multiplicity Borders"""
         if not self.connection_panel.is_connected:
@@ -682,6 +715,28 @@ class ControlPanel(QWidget):
 
         except MSCF16Error as e:
             QMessageBox.critical(self, "Error", f"Multiplicity Borders setting failed:\n{str(e)}")
+
+    def set_timing_filter(self, index):
+        """Set Timing Filter Integration Time (called when combo box changes)"""
+        if not self.connection_panel.is_connected:
+            # Revert selection if not connected
+            self.timing_filter_combo.blockSignals(True)
+            self.timing_filter_combo.setCurrentIndex(0)
+            self.timing_filter_combo.blockSignals(False)
+            return
+
+        try:
+            value = index  # ComboBox index matches the value (0-3)
+            self.connection_panel.controller.set_timing_filter(value)
+            # Success message is optional - you can remove this if too verbose
+            # QMessageBox.information(self, "Success", f"Timing Filter Integration Time set to {value}.")
+
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Timing Filter setting failed:\n{str(e)}")
+            # Revert selection on error
+            self.timing_filter_combo.blockSignals(True)
+            self.timing_filter_combo.setCurrentIndex(0)
+            self.timing_filter_combo.blockSignals(False)
 
 
 class DeviceTab(QWidget):
@@ -1093,6 +1148,18 @@ class DeviceTab(QWidget):
             if "coincidence_time" in gen_set:
                 self.control_panel.coincidence_spin.setValue(gen_set["coincidence_time"])
 
+            # Load BLR threshold
+            if "blr_thresh" in gen_set:
+                self.control_panel.blr_threshold_spin.setValue(gen_set["blr_thresh"])
+
+            # Load timing filter integration time from rc_set
+            if "tf_int" in rc_set:
+                tf_int_value = rc_set["tf_int"]
+                if 0 <= tf_int_value <= 3:
+                    self.control_panel.timing_filter_combo.blockSignals(True)
+                    self.control_panel.timing_filter_combo.setCurrentIndex(tf_int_value)
+                    self.control_panel.timing_filter_combo.blockSignals(False)
+
             # Unblock signals
             self._block_all_signals(False)
 
@@ -1137,6 +1204,8 @@ class DeviceTab(QWidget):
         self.control_panel.multiplicity_hi_spin.blockSignals(block)
         self.control_panel.multiplicity_lo_spin.blockSignals(block)
         self.control_panel.coincidence_spin.blockSignals(block)
+        self.control_panel.blr_threshold_spin.blockSignals(block)
+        self.control_panel.timing_filter_combo.blockSignals(block)
 
 
 class MSCF16MainWindow(QMainWindow):
