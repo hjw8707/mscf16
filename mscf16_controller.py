@@ -5,6 +5,7 @@ This module provides a Python interface for controlling the MSCF-16 NIM device
 via serial communication.
 """
 
+from multiprocessing import context
 import serial
 import time
 from typing import Optional, Union, Tuple
@@ -90,11 +91,18 @@ class MSCF16Controller:
         try:
             # Add carriage return and send command
             full_command = command + '\r'
+            print(f"Sending command: {full_command}")
             self.serial_connection.write(full_command.encode('ascii'))
+            self.serial_connection.flush()
 
-            # Read response
-            response = self.serial_connection.readline().decode('ascii').strip()
-            return response
+            response = ""
+            while True:
+                response += self.serial_connection.read_all().decode('ascii')
+                if response.endswith('>'):
+                    break
+            response = response.split('\n\r') # [0] is the echo, [1] is the response, [2] is the prompt
+            print(f"Received response: {response}")
+            return response[0]
 
         except serial.SerialException as e:
             raise MSCF16Error(f"Serial communication error: {e}")
@@ -254,3 +262,10 @@ class MSCF16Controller:
         """Destructor to ensure connection is closed"""
         if hasattr(self, 'is_connected') and self.is_connected:
             self.disconnect()
+
+if __name__ == "__main__":
+    controller = MSCF16Controller(port="/dev/tty.usbserial-1119991", baudrate=9600)
+    controller.connect()
+    print(controller.get_version())
+    print(controller.display_setup())
+    controller.disconnect()
