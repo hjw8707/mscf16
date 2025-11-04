@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                             QHBoxLayout, QTabWidget, QLabel, QPushButton,
                             QComboBox, QSpinBox, QCheckBox, QGroupBox,
                             QTextEdit, QStatusBar, QMessageBox, QGridLayout,
-                            QSlider, QProgressBar, QSplitter)
+                            QSlider, QProgressBar, QSplitter, QDialog, QScrollArea)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont, QIcon
 from mscf16_controller import MSCF16Controller, MSCF16Error
@@ -34,11 +34,11 @@ class ConnectionPanel(QGroupBox):
         self.setContentsMargins(2, 2, 2, 2)
 
         layout = QVBoxLayout()
-        layout.setSpacing(3)
+        layout.setSpacing(2)
 
         # First row: Connection settings
         connection_layout = QHBoxLayout()
-        connection_layout.setSpacing(5)
+        connection_layout.setSpacing(3)
 
         # Port selection
         connection_layout.addWidget(QLabel("Port:"))
@@ -149,8 +149,8 @@ class ConnectionPanel(QGroupBox):
             self.refresh_btn.setEnabled(True)
 
 
-class CombinedControlPanel(QWidget):
-    """Combined Channel and Group Control Panel"""
+class ControlPanel(QWidget):
+    """Channel and Group Control Panel"""
 
     def __init__(self, connection_panel):
         super().__init__()
@@ -169,13 +169,13 @@ class CombinedControlPanel(QWidget):
 
         # Threshold settings
         threshold_group = QGroupBox("Threshold Settings")
-        threshold_group.setContentsMargins(2, 10, 2, 2)
+        threshold_group.setContentsMargins(2, 8, 2, 2)
         threshold_layout = QVBoxLayout()
-        threshold_layout.setSpacing(5)
+        threshold_layout.setSpacing(3)
 
         # Individual channel Threshold settings
         individual_threshold_layout = QGridLayout()
-        individual_threshold_layout.setSpacing(5)
+        individual_threshold_layout.setSpacing(3)
         # Channel Threshold value input (2 rows)
         self.threshold_spins = {}
         for row in range(2):
@@ -205,8 +205,8 @@ class CombinedControlPanel(QWidget):
 
         # Common Threshold settings
         common_threshold_layout = QHBoxLayout()
-        common_threshold_layout.setSpacing(5)
-        common_threshold_layout.addWidget(QLabel("Common Threshold:"))
+        common_threshold_layout.setSpacing(3)
+        common_threshold_layout.addWidget(QLabel("Common:"))
         self.common_threshold_spin = QSpinBox()
         self.common_threshold_spin.setRange(0, 255)
         self.common_threshold_spin.setValue(128)
@@ -226,12 +226,12 @@ class CombinedControlPanel(QWidget):
 
         # PZ value settings
         pz_group = QGroupBox("PZ Value Settings")
-        pz_group.setContentsMargins(2, 10, 2, 2)
+        pz_group.setContentsMargins(2, 8, 2, 2)
         pz_layout = QVBoxLayout()
 
         # Individual channel PZ settings
         individual_pz_layout = QGridLayout()
-        individual_pz_layout.setSpacing(5)
+        individual_pz_layout.setSpacing(3)
 
         # Channel PZ value input (2 rows)
         self.pz_spins = {}
@@ -262,8 +262,8 @@ class CombinedControlPanel(QWidget):
 
         # Common PZ settings
         common_pz_layout = QHBoxLayout()
-        common_pz_layout.setSpacing(5)
-        common_pz_layout.addWidget(QLabel("Common PZ Value:"))
+        common_pz_layout.setSpacing(3)
+        common_pz_layout.addWidget(QLabel("Common:"))
         self.common_pz_spin = QSpinBox()
         self.common_pz_spin.setRange(0, 255)
         self.common_pz_spin.setValue(100)
@@ -281,40 +281,50 @@ class CombinedControlPanel(QWidget):
         pz_group.setLayout(pz_layout)
         channel_layout.addWidget(pz_group)
 
+        # Monitor and Automatic PZ settings side by side
+        monitor_auto_pz_layout = QHBoxLayout()
+        monitor_auto_pz_layout.setSpacing(5)
+
         # Monitor channel settings
         monitor_group = QGroupBox("Monitor Channel Settings")
-        monitor_group.setContentsMargins(2, 10, 2, 2)
+        monitor_group.setContentsMargins(2, 8, 2, 2)
 
-        row_layout = QHBoxLayout()
-        row_layout.setSpacing(5)
-        for col in range(16):
-            channel_num = col + 1
-            btn = QPushButton(f"M{channel_num}")
-            btn.setFixedSize(40, 30)
-            btn.setStyleSheet("QPushButton { background-color: #ccccff; }")
-            btn.clicked.connect(lambda checked, ch=channel_num: self.set_monitor_channel(ch))
-            row_layout.addWidget(btn)
+        monitor_layout = QHBoxLayout()
+        monitor_layout.setSpacing(5)
+        monitor_layout.addWidget(QLabel("Monitor Channel:"))
+        self.monitor_combo = QComboBox()
+        self.monitor_combo.addItems([f"CH{i}" for i in range(1, 17)])
+        self.monitor_combo.setCurrentIndex(0)
+        self.monitor_combo.currentIndexChanged.connect(self._on_monitor_channel_changed)
+        monitor_layout.addWidget(self.monitor_combo)
+        monitor_layout.addStretch()
 
-        monitor_group.setLayout(row_layout)
-        channel_layout.addWidget(monitor_group)
+        monitor_group.setLayout(monitor_layout)
+        monitor_auto_pz_layout.addWidget(monitor_group)
 
         # Automatic PZ settings
         auto_pz_group = QGroupBox("Automatic PZ Settings")
-        auto_pz_group.setContentsMargins(2, 10, 2, 2)
+        auto_pz_group.setContentsMargins(2, 8, 2, 2)
 
-        # Automatic PZ channel buttons (1-16 only)
-        row_layout = QHBoxLayout()
-        row_layout.setSpacing(5)
-        for col in range(16):
-            channel_num = col + 1
-            btn = QPushButton(f"AP{channel_num}")
-            btn.setFixedSize(40, 30)
-            btn.setStyleSheet("QPushButton { background-color: #ffffcc; }")
-            btn.clicked.connect(lambda checked, ch=channel_num: self.set_automatic_pz(ch))
-            row_layout.addWidget(btn)
+        auto_pz_layout = QHBoxLayout()
+        auto_pz_layout.setSpacing(5)
+        auto_pz_layout.addWidget(QLabel("Channel:"))
+        self.auto_pz_combo = QComboBox()
+        self.auto_pz_combo.addItem("All")
+        self.auto_pz_combo.addItems([f"CH{i}" for i in range(1, 17)])
+        self.auto_pz_combo.setCurrentIndex(0)
+        auto_pz_layout.addWidget(self.auto_pz_combo)
 
-        auto_pz_group.setLayout(row_layout)
-        channel_layout.addWidget(auto_pz_group)
+        self.auto_pz_set_btn = QPushButton("Set")
+        self.auto_pz_set_btn.setFixedSize(50, 25)
+        self.auto_pz_set_btn.clicked.connect(self.set_automatic_pz)
+        auto_pz_layout.addWidget(self.auto_pz_set_btn)
+        auto_pz_layout.addStretch()
+
+        auto_pz_group.setLayout(auto_pz_layout)
+        monitor_auto_pz_layout.addWidget(auto_pz_group)
+
+        channel_layout.addLayout(monitor_auto_pz_layout)
 
         channel_widget.setLayout(channel_layout)
         splitter.addWidget(channel_widget)
@@ -325,12 +335,12 @@ class CombinedControlPanel(QWidget):
 
         # Shaping Time settings
         shaping_group = QGroupBox("Shaping Time Settings")
-        shaping_group.setContentsMargins(2, 10, 2, 2)
+        shaping_group.setContentsMargins(2, 8, 2, 2)
 
         # Group Shaping Time value input (2x2 grid)
         self.shaping_spins = {}
         row_layout = QHBoxLayout()
-        row_layout.setSpacing(5)
+        row_layout.setSpacing(3)
 
         for group_num in range(1, 5):
             # Group number label
@@ -341,7 +351,7 @@ class CombinedControlPanel(QWidget):
             spin_box = QSpinBox()
             spin_box.setRange(0, 15)
             spin_box.setValue(8)
-            spin_box.setFixedWidth(60)
+            spin_box.setFixedWidth(40)
             self.shaping_spins[group_num] = spin_box
             row_layout.addWidget(spin_box)
 
@@ -352,11 +362,11 @@ class CombinedControlPanel(QWidget):
             row_layout.addWidget(btn)
 
         # Common Shaping Time settings
-        row_layout.addWidget(QLabel("Common Shaping Time:"))
+        row_layout.addWidget(QLabel("Common:"))
         self.common_shaping_spin = QSpinBox()
         self.common_shaping_spin.setRange(0, 15)
         self.common_shaping_spin.setValue(8)
-        self.common_shaping_spin.setFixedWidth(60)
+        self.common_shaping_spin.setFixedWidth(40)
         row_layout.addWidget(self.common_shaping_spin)
 
         common_shaping_btn = QPushButton("Apply to All Groups")
@@ -371,9 +381,9 @@ class CombinedControlPanel(QWidget):
 
         # Gain settings
         gain_group = QGroupBox("Gain Settings")
-        gain_group.setContentsMargins(2, 10, 2, 2)
+        gain_group.setContentsMargins(2, 8, 2, 2)
         gain_layout = QHBoxLayout()
-        gain_layout.setSpacing(5)
+        gain_layout.setSpacing(3)
 
         # Individual group Gain settings
         # Group Gain value input (2x2 grid)
@@ -388,7 +398,7 @@ class CombinedControlPanel(QWidget):
             spin_box = QSpinBox()
             spin_box.setRange(0, 15)
             spin_box.setValue(8)
-            spin_box.setFixedWidth(60)
+            spin_box.setFixedWidth(40)
             self.gain_spins[group_num] = spin_box
             gain_layout.addWidget(spin_box)
 
@@ -399,11 +409,11 @@ class CombinedControlPanel(QWidget):
             gain_layout.addWidget(btn)
 
         # Common Gain settings
-        gain_layout.addWidget(QLabel("Common Gain:"))
+        gain_layout.addWidget(QLabel("Common:"))
         self.common_gain_spin = QSpinBox()
         self.common_gain_spin.setRange(0, 15)
         self.common_gain_spin.setValue(8)
-        self.common_gain_spin.setFixedWidth(60)
+        self.common_gain_spin.setFixedWidth(40)
         gain_layout.addWidget(self.common_gain_spin)
 
         common_gain_btn = QPushButton("Apply to All Groups")
@@ -424,137 +434,15 @@ class CombinedControlPanel(QWidget):
 
         layout.addWidget(splitter)
 
-        # Add Advanced Control Panel at the bottom
-        self.advanced_panel = AdvancedControlPanel(self.connection_panel)
-        layout.addWidget(self.advanced_panel)
-
-        self.setLayout(layout)
-
-    def set_threshold(self, channel):
-        """Set Threshold"""
-        if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "Warning", "Device is not connected.")
-            return
-
-        try:
-            if channel == 17:
-                value = self.common_threshold_spin.value()
-                self.connection_panel.controller.set_threshold(channel, value)
-                QMessageBox.information(self, "Success", f"All channels threshold set to {value}.")
-            else:
-                value = self.threshold_spins[channel].value()
-                self.connection_panel.controller.set_threshold(channel, value)
-                QMessageBox.information(self, "Success", f"Channel {channel} threshold set to {value}.")
-
-        except MSCF16Error as e:
-            QMessageBox.critical(self, "Error", f"Threshold setting failed:\n{str(e)}")
-
-    def set_pz_value(self, channel):
-        """Set PZ Value"""
-        if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "Warning", "Device is not connected.")
-            return
-
-        try:
-            if channel == 17:
-                value = self.common_pz_spin.value()
-                self.connection_panel.controller.set_pz_value(channel, value)
-                QMessageBox.information(self, "Success", f"All channels PZ value set to {value}.")
-            else:
-                value = self.pz_spins[channel].value()
-                self.connection_panel.controller.set_pz_value(channel, value)
-                QMessageBox.information(self, "Success", f"Channel {channel} PZ value set to {value}.")
-
-        except MSCF16Error as e:
-            QMessageBox.critical(self, "Error", f"PZ value setting failed:\n{str(e)}")
-
-    def set_monitor_channel(self, channel):
-        """Set Monitor Channel"""
-        if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "Warning", "Device is not connected.")
-            return
-
-        try:
-            self.connection_panel.controller.set_monitor_channel(channel)
-            QMessageBox.information(self, "Success", f"Channel {channel} set as monitor channel.")
-
-        except MSCF16Error as e:
-            QMessageBox.critical(self, "Error", f"Monitor channel setting failed:\n{str(e)}")
-
-    def set_automatic_pz(self, channel):
-        """Set Automatic PZ"""
-        if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "Warning", "Device is not connected.")
-            return
-
-        try:
-            self.connection_panel.controller.set_automatic_pz(channel)
-            QMessageBox.information(self, "Success", f"Automatic PZ set for channel {channel}.")
-
-        except MSCF16Error as e:
-            QMessageBox.critical(self, "Error", f"Automatic PZ setting failed:\n{str(e)}")
-
-    def set_shaping_time(self, group):
-        """Set Shaping Time"""
-        if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "Warning", "Device is not connected.")
-            return
-
-        try:
-            if group == 5:
-                value = self.common_shaping_spin.value()
-                self.connection_panel.controller.set_shaping_time(group, value)
-                QMessageBox.information(self, "Success", f"All groups shaping time set to {value}.")
-            else:
-                value = self.shaping_spins[group].value()
-                self.connection_panel.controller.set_shaping_time(group, value)
-                QMessageBox.information(self, "Success", f"Group {group} shaping time set to {value}.")
-
-        except MSCF16Error as e:
-            QMessageBox.critical(self, "Error", f"Shaping time setting failed:\n{str(e)}")
-
-    def set_gain(self, group):
-        """Set Gain"""
-        if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "Warning", "Device is not connected.")
-            return
-
-        try:
-            if group == 5:
-                value = self.common_gain_spin.value()
-                self.connection_panel.controller.set_gain(group, value)
-                QMessageBox.information(self, "Success", f"All groups gain set to {value}.")
-            else:
-                value = self.gain_spins[group].value()
-                self.connection_panel.controller.set_gain(group, value)
-                QMessageBox.information(self, "Success", f"Group {group} gain set to {value}.")
-
-        except MSCF16Error as e:
-            QMessageBox.critical(self, "Error", f"Gain setting failed:\n{str(e)}")
-
-
-
-class AdvancedControlPanel(QWidget):
-    """고급 제어 패널"""
-
-    def __init__(self, connection_panel):
-        #super().__init__("고급 제어")
-        super().__init__()
-        self.connection_panel = connection_panel
-        self.init_ui()
-
-    def init_ui(self):
-        layout = QVBoxLayout()
-
         # General Settings (combining Timing and Multiplicity)
         general_group = QGroupBox("General Settings")
-        general_group.setContentsMargins(2, 10, 2, 2)
+        general_group.setContentsMargins(2, 8, 2, 2)
         general_layout = QVBoxLayout()
-        general_layout.setSpacing(5)
+        general_layout.setSpacing(3)
 
         # Timing settings in one line
         timing_layout = QHBoxLayout()
-        timing_layout.setSpacing(5)
+        timing_layout.setSpacing(3)
 
         timing_layout.addWidget(QLabel("Coincidence Window:"))
         self.coincidence_spin = QSpinBox()
@@ -597,7 +485,7 @@ class AdvancedControlPanel(QWidget):
 
         # Multiplicity settings in one line
         multiplicity_layout = QHBoxLayout()
-        multiplicity_layout.setSpacing(5)
+        multiplicity_layout.setSpacing(3)
 
         multiplicity_layout.addWidget(QLabel("Multiplicity High:"))
         self.multiplicity_hi_spin = QSpinBox()
@@ -626,52 +514,169 @@ class AdvancedControlPanel(QWidget):
 
         self.setLayout(layout)
 
-    def set_coincidence_window(self):
-        """Coincidence Window 설정"""
+    def set_threshold(self, channel):
+        """Set Threshold"""
         if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "경고", "장치에 연결되지 않았습니다.")
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
+            return
+
+        try:
+            if channel == 17:
+                value = self.common_threshold_spin.value()
+                self.connection_panel.controller.set_threshold(channel, value)
+                QMessageBox.information(self, "Success", f"All channels threshold set to {value}.")
+            else:
+                value = self.threshold_spins[channel].value()
+                self.connection_panel.controller.set_threshold(channel, value)
+                QMessageBox.information(self, "Success", f"Channel {channel} threshold set to {value}.")
+
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Threshold setting failed:\n{str(e)}")
+
+    def set_pz_value(self, channel):
+        """Set PZ Value"""
+        if not self.connection_panel.is_connected:
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
+            return
+
+        try:
+            if channel == 17:
+                value = self.common_pz_spin.value()
+                self.connection_panel.controller.set_pz_value(channel, value)
+                QMessageBox.information(self, "Success", f"All channels PZ value set to {value}.")
+            else:
+                value = self.pz_spins[channel].value()
+                self.connection_panel.controller.set_pz_value(channel, value)
+                QMessageBox.information(self, "Success", f"Channel {channel} PZ value set to {value}.")
+
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"PZ value setting failed:\n{str(e)}")
+
+    def _on_monitor_channel_changed(self, index):
+        """Handle monitor channel dropdown change"""
+        if not self.connection_panel.is_connected:
+            # Revert selection if not connected
+            self.monitor_combo.blockSignals(True)
+            self.monitor_combo.setCurrentIndex(0)
+            self.monitor_combo.blockSignals(False)
+            return
+
+        try:
+            channel = index + 1  # ComboBox index is 0-based, channel is 1-based
+            self.connection_panel.controller.set_monitor_channel(channel)
+            QMessageBox.information(self, "Success", f"Channel {channel} set as monitor channel.")
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Monitor channel setting failed:\n{str(e)}")
+            # Revert selection on error
+            self.monitor_combo.blockSignals(True)
+            self.monitor_combo.setCurrentIndex(0)
+            self.monitor_combo.blockSignals(False)
+
+    def set_automatic_pz(self):
+        """Set Automatic PZ for selected channel or all channels"""
+        if not self.connection_panel.is_connected:
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
+            return
+
+        try:
+            selected_index = self.auto_pz_combo.currentIndex()
+            if selected_index == 0:
+                # "All" selected - set automatic PZ for all channels
+                self.connection_panel.controller.toggle_automatic_pz()
+                QMessageBox.information(self, "Success", "Automatic PZ set for all channels.")
+            else:
+                # Specific channel selected (index 1-16 corresponds to CH1-CH16)
+                channel = selected_index  # index 1 = CH1, index 2 = CH2, etc.
+                self.connection_panel.controller.set_automatic_pz(channel)
+                QMessageBox.information(self, "Success", f"Automatic PZ set for channel {channel}.")
+
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Automatic PZ setting failed:\n{str(e)}")
+
+    def set_shaping_time(self, group):
+        """Set Shaping Time"""
+        if not self.connection_panel.is_connected:
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
+            return
+
+        try:
+            if group == 5:
+                value = self.common_shaping_spin.value()
+                self.connection_panel.controller.set_shaping_time(group, value)
+                QMessageBox.information(self, "Success", f"All groups shaping time set to {value}.")
+            else:
+                value = self.shaping_spins[group].value()
+                self.connection_panel.controller.set_shaping_time(group, value)
+                QMessageBox.information(self, "Success", f"Group {group} shaping time set to {value}.")
+
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Shaping time setting failed:\n{str(e)}")
+
+    def set_gain(self, group):
+        """Set Gain"""
+        if not self.connection_panel.is_connected:
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
+            return
+
+        try:
+            if group == 5:
+                value = self.common_gain_spin.value()
+                self.connection_panel.controller.set_gain(group, value)
+                QMessageBox.information(self, "Success", f"All groups gain set to {value}.")
+            else:
+                value = self.gain_spins[group].value()
+                self.connection_panel.controller.set_gain(group, value)
+                QMessageBox.information(self, "Success", f"Group {group} gain set to {value}.")
+
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Gain setting failed:\n{str(e)}")
+
+    def set_coincidence_window(self):
+        """Set Coincidence Window"""
+        if not self.connection_panel.is_connected:
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
             return
 
         try:
             value = self.coincidence_spin.value()
             self.connection_panel.controller.set_coincidence_window(value)
-            QMessageBox.information(self, "성공", f"Coincidence Window가 {value}로 설정되었습니다.")
+            QMessageBox.information(self, "Success", f"Coincidence Window set to {value}.")
 
         except MSCF16Error as e:
-            QMessageBox.critical(self, "오류", f"Coincidence Window 설정 실패:\n{str(e)}")
+            QMessageBox.critical(self, "Error", f"Coincidence Window setting failed:\n{str(e)}")
 
     def set_shaper_offset(self):
-        """Shaper Offset 설정"""
+        """Set Shaper Offset"""
         if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "경고", "장치에 연결되지 않았습니다.")
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
             return
 
         try:
             value = self.shaper_offset_spin.value()
             self.connection_panel.controller.set_shaper_offset(value)
-            QMessageBox.information(self, "성공", f"Shaper Offset이 {value}로 설정되었습니다.")
+            QMessageBox.information(self, "Success", f"Shaper Offset set to {value}.")
 
         except MSCF16Error as e:
-            QMessageBox.critical(self, "오류", f"Shaper Offset 설정 실패:\n{str(e)}")
+            QMessageBox.critical(self, "Error", f"Shaper Offset setting failed:\n{str(e)}")
 
     def set_threshold_offset(self):
-        """Threshold Offset 설정"""
+        """Set Threshold Offset"""
         if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "경고", "장치에 연결되지 않았습니다.")
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
             return
 
         try:
             value = self.threshold_offset_spin.value()
             self.connection_panel.controller.set_threshold_offset(value)
-            QMessageBox.information(self, "성공", f"Threshold Offset이 {value}로 설정되었습니다.")
+            QMessageBox.information(self, "Success", f"Threshold Offset set to {value}.")
 
         except MSCF16Error as e:
-            QMessageBox.critical(self, "오류", f"Threshold Offset 설정 실패:\n{str(e)}")
+            QMessageBox.critical(self, "Error", f"Threshold Offset setting failed:\n{str(e)}")
 
     def set_multiplicity_borders(self):
-        """Multiplicity Borders 설정"""
+        """Set Multiplicity Borders"""
         if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "경고", "장치에 연결되지 않았습니다.")
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
             return
 
         try:
@@ -679,103 +684,10 @@ class AdvancedControlPanel(QWidget):
             lo = self.multiplicity_lo_spin.value()
 
             self.connection_panel.controller.set_multiplicity_borders(hi, lo)
-            QMessageBox.information(self, "성공", f"Multiplicity Borders가 High: {hi}, Low: {lo}로 설정되었습니다.")
+            QMessageBox.information(self, "Success", f"Multiplicity Borders set to High: {hi}, Low: {lo}.")
 
         except MSCF16Error as e:
-            QMessageBox.critical(self, "오류", f"Multiplicity Borders 설정 실패:\n{str(e)}")
-
-class StatusPanel(QWidget):
-    """상태 표시 및 로그 패널"""
-
-    def __init__(self, connection_panel):
-        super().__init__()
-        self.connection_panel = connection_panel
-        self.init_ui()
-
-    def init_ui(self):
-        self.setContentsMargins(2, 2, 2, 2)
-        layout = QVBoxLayout()
-
-        # 장치 정보
-        info_group = QGroupBox("장치 정보")
-        info_layout = QGridLayout()
-
-        self.version_label = QLabel("버전: 알 수 없음")
-        info_layout.addWidget(self.version_label, 0, 0)
-
-        self.version_btn = QPushButton("버전 확인")
-        self.version_btn.clicked.connect(self.get_version)
-        info_layout.addWidget(self.version_btn, 0, 1)
-
-        self.setup_btn = QPushButton("설정 표시")
-        self.setup_btn.clicked.connect(self.display_setup)
-        info_layout.addWidget(self.setup_btn, 0, 2)
-
-        info_group.setLayout(info_layout)
-        layout.addWidget(info_group)
-
-        # 로그 영역
-        log_group = QGroupBox("로그")
-        log_layout = QVBoxLayout()
-
-        self.log_text = QTextEdit()
-        self.log_text.setMaximumHeight(200)
-        self.log_text.setReadOnly(True)
-        log_layout.addWidget(self.log_text)
-
-        clear_btn = QPushButton("로그 지우기")
-        clear_btn.clicked.connect(self.clear_log)
-        log_layout.addWidget(clear_btn)
-
-        log_group.setLayout(log_layout)
-        layout.addWidget(log_group)
-
-        self.setLayout(layout)
-
-    def log_message(self, message):
-        """로그 메시지 추가"""
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        self.log_text.append(f"[{timestamp}] {message}")
-
-    def clear_log(self):
-        """로그 지우기"""
-        self.log_text.clear()
-
-    def get_version(self):
-        """펌웨어 버전 확인"""
-        if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "경고", "장치에 연결되지 않았습니다.")
-            return
-
-        try:
-            version = self.connection_panel.controller.get_version()
-            self.version_label.setText(f"버전: {version}")
-            self.log_message(f"펌웨어 버전: {version}")
-
-        except MSCF16Error as e:
-            QMessageBox.critical(self, "오류", f"버전 확인 실패:\n{str(e)}")
-
-    def display_setup(self):
-        """설정 표시"""
-        if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "경고", "장치에 연결되지 않았습니다.")
-            return
-
-        try:
-            setup_info = self.connection_panel.controller.display_setup()
-            self.log_message("현재 설정:")
-            self.log_message(setup_info)
-
-            # 별도 창으로 표시
-            msg_box = QMessageBox()
-            msg_box.setWindowTitle("현재 설정")
-            msg_box.setText(setup_info)
-            msg_box.setDetailedText(setup_info)
-            msg_box.exec_()
-
-        except MSCF16Error as e:
-            QMessageBox.critical(self, "오류", f"설정 표시 실패:\n{str(e)}")
+            QMessageBox.critical(self, "Error", f"Multiplicity Borders setting failed:\n{str(e)}")
 
 
 class MSCF16MainWindow(QMainWindow):
@@ -800,6 +712,8 @@ class MSCF16MainWindow(QMainWindow):
 
         # Main layout
         main_layout = QVBoxLayout()
+        main_layout.setSpacing(3)
+        main_layout.setContentsMargins(3, 3, 3, 3)
 
         # Connection panel
         self.connection_panel = ConnectionPanel()
@@ -808,14 +722,38 @@ class MSCF16MainWindow(QMainWindow):
 
         # Version info and Mode settings (between Connection and Threshold Settings)
         info_mode_layout = QHBoxLayout()
-        info_mode_layout.setSpacing(10)
 
+        info_mode_layout.setSpacing(5)
+        info_mode_layout.addStretch()
         # Version info
         self.version_label = QLabel("Version: Not connected")
         self.version_label.setStyleSheet("font-weight: bold;")
         info_mode_layout.addWidget(self.version_label)
 
         info_mode_layout.addStretch()
+
+        # View Setting button
+        self.view_setting_btn = QPushButton("View Setting")
+        self.view_setting_btn.setFixedSize(120, 25)
+        self.view_setting_btn.clicked.connect(self.view_settings)
+        info_mode_layout.addWidget(self.view_setting_btn)
+
+        # Load Setting button
+        self.load_setting_btn = QPushButton("Load RC Setting")
+        self.load_setting_btn.setFixedSize(120, 25)
+        self.load_setting_btn.clicked.connect(self.load_rc_settings)
+        info_mode_layout.addWidget(self.load_setting_btn)
+
+        # Copy buttons
+        self.copy_rc_to_panel_btn = QPushButton("RC→Panel")
+        self.copy_rc_to_panel_btn.setFixedSize(100, 25)
+        self.copy_rc_to_panel_btn.clicked.connect(self.copy_rc_to_panel)
+        info_mode_layout.addWidget(self.copy_rc_to_panel_btn)
+
+        self.copy_panel_to_rc_btn = QPushButton("Panel→RC")
+        self.copy_panel_to_rc_btn.setFixedSize(100, 25)
+        self.copy_panel_to_rc_btn.clicked.connect(self.copy_panel_to_rc)
+        info_mode_layout.addWidget(self.copy_panel_to_rc_btn)
 
         # Mode settings checkboxes
         self.single_channel_check = QCheckBox("Single Mode")
@@ -838,9 +776,9 @@ class MSCF16MainWindow(QMainWindow):
         main_layout.addLayout(info_mode_layout)
 
         # Combined control panel (includes Advanced Control)
-        combined_panel = CombinedControlPanel(self.connection_panel)
-        combined_panel.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(combined_panel)
+        self.control_panel = ControlPanel(self.connection_panel)
+        self.control_panel.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(self.control_panel)
         central_widget.setLayout(main_layout)
 
         # Status bar
@@ -884,6 +822,10 @@ class MSCF16MainWindow(QMainWindow):
             self.ecl_delay_check.setEnabled(True)
             self.blr_mode_check.setEnabled(True)
             self.rc_mode_check.setEnabled(True)
+            self.copy_rc_to_panel_btn.setEnabled(True)
+            self.copy_panel_to_rc_btn.setEnabled(True)
+            self.load_setting_btn.setEnabled(True)
+            self.view_setting_btn.setEnabled(True)
         else:
             self.status_bar.showMessage("Device Not Connected")
             self.version_label.setText("Version: Not connected")
@@ -891,6 +833,10 @@ class MSCF16MainWindow(QMainWindow):
             self.ecl_delay_check.setEnabled(False)
             self.blr_mode_check.setEnabled(False)
             self.rc_mode_check.setEnabled(False)
+            self.copy_rc_to_panel_btn.setEnabled(False)
+            self.copy_panel_to_rc_btn.setEnabled(False)
+            self.load_setting_btn.setEnabled(False)
+            self.view_setting_btn.setEnabled(False)
 
     def update_version_info(self):
         """Update version information"""
@@ -965,6 +911,255 @@ class MSCF16MainWindow(QMainWindow):
             self.rc_mode_check.blockSignals(True)
             self.rc_mode_check.setChecked(not enabled)
             self.rc_mode_check.blockSignals(False)
+
+    def copy_rc_to_panel(self):
+        """Copy RC settings to front panel"""
+        if not self.connection_panel.is_connected:
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
+            return
+
+        try:
+            self.connection_panel.controller.copy_rc_to_front_panel()
+            QMessageBox.information(self, "Success", "RC settings copied to front panel.")
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Failed to copy RC to Panel:\n{str(e)}")
+
+    def copy_panel_to_rc(self):
+        """Copy front panel settings to RC"""
+        if not self.connection_panel.is_connected:
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
+            return
+
+        try:
+            self.connection_panel.controller.copy_front_panel_to_rc()
+            QMessageBox.information(self, "Success", "Front panel settings copied to RC.")
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Failed to copy Panel to RC:\n{str(e)}")
+
+    def view_settings(self):
+        """View all settings (Panel, RC, General) in a new window"""
+        if not self.connection_panel.is_connected:
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
+            return
+
+        try:
+            panel_set, rc_set, gen_set = self.connection_panel.controller.display_setup_parsed()
+
+            # Create dialog window
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Device Settings")
+            dialog.setMinimumSize(600, 700)
+
+            # Create scroll area for content
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+
+            # Create content widget
+            content_widget = QWidget()
+            content_layout = QVBoxLayout()
+            content_layout.setSpacing(10)
+
+            # Panel Settings
+            panel_group = QGroupBox("Panel Settings")
+            panel_layout = QVBoxLayout()
+            panel_text = self._format_settings_dict(panel_set)
+            panel_label = QLabel(panel_text)
+            panel_label.setWordWrap(True)
+            panel_layout.addWidget(panel_label)
+            panel_group.setLayout(panel_layout)
+            content_layout.addWidget(panel_group)
+
+            # RC Settings
+            rc_group = QGroupBox("RC Settings")
+            rc_layout = QVBoxLayout()
+            rc_text = self._format_settings_dict(rc_set)
+            rc_label = QLabel(rc_text)
+            rc_label.setWordWrap(True)
+            rc_layout.addWidget(rc_label)
+            rc_group.setLayout(rc_layout)
+            content_layout.addWidget(rc_group)
+
+            # General Settings
+            gen_group = QGroupBox("General Settings")
+            gen_layout = QVBoxLayout()
+            gen_text = self._format_settings_dict(gen_set)
+            gen_label = QLabel(gen_text)
+            gen_label.setWordWrap(True)
+            gen_layout.addWidget(gen_label)
+            gen_group.setLayout(gen_layout)
+            content_layout.addWidget(gen_group)
+
+            content_layout.addStretch()
+            content_widget.setLayout(content_layout)
+            scroll.setWidget(content_widget)
+
+            # Dialog layout
+            dialog_layout = QVBoxLayout()
+            dialog_layout.addWidget(scroll)
+
+            close_btn = QPushButton("Close")
+            close_btn.clicked.connect(dialog.accept)
+            dialog_layout.addWidget(close_btn)
+
+            dialog.setLayout(dialog_layout)
+            dialog.exec_()
+
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Failed to load settings:\n{str(e)}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Unexpected error loading settings:\n{str(e)}")
+
+    def _format_settings_dict(self, settings_dict):
+        """Format settings dictionary into readable text"""
+        if not settings_dict:
+            return "No settings available"
+
+        lines = []
+        for key, value in settings_dict.items():
+            if isinstance(value, list):
+                # Format list values
+                if len(value) <= 20:
+                    formatted = ", ".join(str(v) for v in value)
+                    lines.append(f"{key}: [{formatted}]")
+                else:
+                    formatted = ", ".join(str(v) for v in value[:20])
+                    lines.append(f"{key}: [{formatted}... ({len(value)} total)]")
+            elif isinstance(value, dict):
+                # Format nested dictionary
+                formatted = ", ".join(f"{k}: {v}" for k, v in value.items())
+                lines.append(f"{key}: {{{formatted}}}")
+            else:
+                lines.append(f"{key}: {value}")
+
+        return "\n".join(lines)
+
+    def load_rc_settings(self):
+        """Load RC settings from device and update GUI"""
+        if not self.connection_panel.is_connected:
+            QMessageBox.warning(self, "Warning", "Device is not connected.")
+            return
+
+        try:
+            panel_set, rc_set, gen_set = self.connection_panel.controller.display_setup_parsed()
+
+            # Block signals to prevent triggering set commands during loading
+            self._block_all_signals(True)
+
+            # Load threshold values
+            if "threshs" in rc_set:
+                threshs = rc_set["threshs"]
+                # threshs는 16개 채널 + common (마지막이 common)
+                for i, value in enumerate(threshs[:16], 1):  # First 16 values are channels 1-16
+                    if i in self.combined_panel.threshold_spins:
+                        self.combined_panel.threshold_spins[i].setValue(value)
+                # Last value is common
+                if len(threshs) > 16:
+                    self.combined_panel.common_threshold_spin.setValue(threshs[-1])
+
+            # Load PZ values
+            if "pz" in rc_set:
+                pz_values = rc_set["pz"]
+                for i, value in enumerate(pz_values[:16], 1):  # First 16 values are channels 1-16
+                    if i in self.combined_panel.pz_spins:
+                        self.combined_panel.pz_spins[i].setValue(value)
+                # Last value is common
+                if len(pz_values) > 16:
+                    self.combined_panel.common_pz_spin.setValue(pz_values[-1])
+
+            # Load shaping times
+            if "shts" in rc_set:
+                shts = rc_set["shts"]
+                for i, value in enumerate(shts[:4], 1):  # First 4 values are groups 1-4
+                    if i in self.combined_panel.shaping_spins:
+                        self.combined_panel.shaping_spins[i].setValue(value)
+                # Last value is common
+                if len(shts) > 4:
+                    self.combined_panel.common_shaping_spin.setValue(shts[-1])
+
+            # Load gains
+            if "gains" in rc_set:
+                gains = rc_set["gains"]
+                for i, value in enumerate(gains[:4], 1):  # First 4 values are groups 1-4
+                    if i in self.combined_panel.gain_spins:
+                        self.combined_panel.gain_spins[i].setValue(value)
+                # Last value is common
+                if len(gains) > 4:
+                    self.combined_panel.common_gain_spin.setValue(gains[-1])
+
+            # Load monitor channel
+            if "monitor" in rc_set:
+                monitor_ch = rc_set["monitor"]
+                if 1 <= monitor_ch <= 16:
+                    self.combined_panel.monitor_combo.blockSignals(True)
+                    self.combined_panel.monitor_combo.setCurrentIndex(monitor_ch - 1)
+                    self.combined_panel.monitor_combo.blockSignals(False)
+
+            # Load multiplicity
+            if "mult" in rc_set:
+                mult = rc_set["mult"]
+                if "high" in mult:
+                    self.combined_panel.multiplicity_hi_spin.setValue(mult["high"])
+                if "low" in mult:
+                    self.combined_panel.multiplicity_lo_spin.setValue(mult["low"])
+
+            # Load mode settings
+            if "single_mode" in rc_set:
+                self.single_channel_check.setChecked(rc_set["single_mode"])
+            if "ecl_delay" in rc_set:
+                self.ecl_delay_check.setChecked(rc_set["ecl_delay"])
+            if "blr_active" in rc_set:
+                self.blr_mode_check.setChecked(rc_set["blr_active"])
+            if "rc_mode" in rc_set:
+                self.rc_mode_check.setChecked(rc_set["rc_mode"])
+
+            # Load general settings (coincidence window)
+            if "coincidence_time" in gen_set:
+                self.combined_panel.coincidence_spin.setValue(gen_set["coincidence_time"])
+
+            # Unblock signals
+            self._block_all_signals(False)
+
+            QMessageBox.information(self, "Success", "RC settings loaded to GUI.")
+
+        except MSCF16Error as e:
+            self._block_all_signals(False)
+            QMessageBox.critical(self, "Error", f"Failed to load RC settings:\n{str(e)}")
+        except Exception as e:
+            self._block_all_signals(False)
+            QMessageBox.critical(self, "Error", f"Unexpected error loading settings:\n{str(e)}")
+
+    def _block_all_signals(self, block):
+        """Block or unblock all signal emissions"""
+        # Block threshold spins
+        for spin in self.combined_panel.threshold_spins.values():
+            spin.blockSignals(block)
+        self.combined_panel.common_threshold_spin.blockSignals(block)
+
+        # Block PZ spins
+        for spin in self.combined_panel.pz_spins.values():
+            spin.blockSignals(block)
+        self.combined_panel.common_pz_spin.blockSignals(block)
+
+        # Block shaping time spins
+        for spin in self.combined_panel.shaping_spins.values():
+            spin.blockSignals(block)
+        self.combined_panel.common_shaping_spin.blockSignals(block)
+
+        # Block gain spins
+        for spin in self.combined_panel.gain_spins.values():
+            spin.blockSignals(block)
+        self.combined_panel.common_gain_spin.blockSignals(block)
+
+        # Block mode checkboxes
+        self.single_channel_check.blockSignals(block)
+        self.ecl_delay_check.blockSignals(block)
+        self.blr_mode_check.blockSignals(block)
+        self.rc_mode_check.blockSignals(block)
+
+        # Block general settings spins
+        self.combined_panel.multiplicity_hi_spin.blockSignals(block)
+        self.combined_panel.multiplicity_lo_spin.blockSignals(block)
+        self.combined_panel.coincidence_spin.blockSignals(block)
 
     def closeEvent(self, event):
         """Called when window is closed"""

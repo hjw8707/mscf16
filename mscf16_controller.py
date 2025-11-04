@@ -410,7 +410,8 @@ class MSCF16Controller:
 if __name__ == "__main__":
     controller = MSCF16Controller(port="/dev/tty.usbserial-1119991", baudrate=9600)
     controller.connect()
-    controller.switch_rc_mode_off()
+    controller.switch_rc_mode_on()
+    controller.set_gain(1, 0)
     controller.set_single_channel_mode(True)
     controller.set_ecl_delay(True)
     controller.set_blr_mode(True)
