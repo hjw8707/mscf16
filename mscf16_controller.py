@@ -301,7 +301,7 @@ class MSCF16Controller:
         def parse_single_mode(line):
             return 'single' in line
 
-        def parse_rc_on(line):
+        def parse_rc_mode(line):
             return 'rc on' in line
 
         def parse_pz_disp_resolution(line):
@@ -347,10 +347,10 @@ class MSCF16Controller:
                 else:
                     if "BLR" in line:
                         target["blr_active"] = parse_blr(line)
-                    if "single mode" in line:
+                    if "single mode" in line or "common mode" in line:
                         target["single_mode"] = parse_single_mode(line)
-                    if section == "rc" and "rc on" in line:
-                        target["rc_on"] = parse_rc_on(line)
+                    if section == "rc" and ("rc on" in line or "rc off" in line):
+                        target["rc_mode"] = parse_rc_mode(line)
                     if section == "rc" and "pz disp resolution" in line:
                         target["pz_disp_resolution"] = parse_pz_disp_resolution(line)
             elif section == "general":
@@ -410,7 +410,10 @@ class MSCF16Controller:
 if __name__ == "__main__":
     controller = MSCF16Controller(port="/dev/tty.usbserial-1119991", baudrate=9600)
     controller.connect()
-    print(controller.get_version_parsed())
+    controller.switch_rc_mode_off()
+    controller.set_single_channel_mode(True)
+    controller.set_ecl_delay(True)
+    controller.set_blr_mode(True)
     print(controller.display_setup())
     print(controller.display_setup_parsed())
     controller.disconnect()

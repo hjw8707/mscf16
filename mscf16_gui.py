@@ -33,34 +33,42 @@ class ConnectionPanel(QGroupBox):
     def init_ui(self):
         self.setContentsMargins(2, 2, 2, 2)
 
-        layout = QGridLayout()
+        layout = QVBoxLayout()
+        layout.setSpacing(3)
+
+        # First row: Connection settings
+        connection_layout = QHBoxLayout()
+        connection_layout.setSpacing(5)
 
         # Port selection
-        layout.addWidget(QLabel("Port:"), 0, 0)
+        connection_layout.addWidget(QLabel("Port:"))
         self.port_combo = QComboBox()
         self.port_combo.setMinimumWidth(200)
-        layout.addWidget(self.port_combo, 0, 1)
+        connection_layout.addWidget(self.port_combo)
 
         self.refresh_btn = QPushButton("Refresh")
         self.refresh_btn.clicked.connect(self.refresh_ports)
-        layout.addWidget(self.refresh_btn, 0, 2)
+        connection_layout.addWidget(self.refresh_btn)
 
         # Baud rate selection
-        layout.addWidget(QLabel("Baud Rate:"), 0, 3)
+        connection_layout.addWidget(QLabel("Baud Rate:"))
         self.baudrate_combo = QComboBox()
         self.baudrate_combo.addItems(["9600", "19200", "28400", "57600", "115200"])
         self.baudrate_combo.setCurrentText("9600")
-        layout.addWidget(self.baudrate_combo, 0, 4)
+        connection_layout.addWidget(self.baudrate_combo)
 
         # Connection button
         self.connect_btn = QPushButton("Connect")
         self.connect_btn.clicked.connect(self.toggle_connection)
-        layout.addWidget(self.connect_btn, 0, 5)
+        connection_layout.addWidget(self.connect_btn)
 
         # Connection status display
         self.status_label = QLabel("Not Connected")
         self.status_label.setStyleSheet("color: red; font-weight: bold;")
-        layout.addWidget(self.status_label, 0, 6)
+        connection_layout.addWidget(self.status_label)
+        connection_layout.addStretch()
+
+        layout.addLayout(connection_layout)
 
         self.setLayout(layout)
 
@@ -415,6 +423,11 @@ class CombinedControlPanel(QWidget):
         splitter.setSizes([400, 300])
 
         layout.addWidget(splitter)
+
+        # Add Advanced Control Panel at the bottom
+        self.advanced_panel = AdvancedControlPanel(self.connection_panel)
+        layout.addWidget(self.advanced_panel)
+
         self.setLayout(layout)
 
     def set_threshold(self, channel):
@@ -533,101 +546,83 @@ class AdvancedControlPanel(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
 
-        # 타이밍 설정
-        timing_group = QGroupBox("타이밍 설정")
-        timing_layout = QGridLayout()
+        # General Settings (combining Timing and Multiplicity)
+        general_group = QGroupBox("General Settings")
+        general_group.setContentsMargins(2, 10, 2, 2)
+        general_layout = QVBoxLayout()
+        general_layout.setSpacing(5)
 
-        timing_layout.addWidget(QLabel("Coincidence Window:"), 0, 0)
+        # Timing settings in one line
+        timing_layout = QHBoxLayout()
+        timing_layout.setSpacing(5)
+
+        timing_layout.addWidget(QLabel("Coincidence Window:"))
         self.coincidence_spin = QSpinBox()
         self.coincidence_spin.setRange(0, 255)
         self.coincidence_spin.setValue(128)
-        timing_layout.addWidget(self.coincidence_spin, 0, 1)
+        self.coincidence_spin.setFixedWidth(60)
+        timing_layout.addWidget(self.coincidence_spin)
 
-        self.coincidence_btn = QPushButton("설정")
+        self.coincidence_btn = QPushButton("Set")
+        self.coincidence_btn.setFixedSize(50, 25)
         self.coincidence_btn.clicked.connect(self.set_coincidence_window)
-        timing_layout.addWidget(self.coincidence_btn, 0, 2)
+        timing_layout.addWidget(self.coincidence_btn)
 
-        timing_layout.addWidget(QLabel("Shaper Offset:"), 1, 0)
+        timing_layout.addWidget(QLabel("Shaper Offset:"))
         self.shaper_offset_spin = QSpinBox()
         self.shaper_offset_spin.setRange(0, 200)
         self.shaper_offset_spin.setValue(100)
-        timing_layout.addWidget(self.shaper_offset_spin, 1, 1)
+        self.shaper_offset_spin.setFixedWidth(60)
+        timing_layout.addWidget(self.shaper_offset_spin)
 
-        self.shaper_offset_btn = QPushButton("설정")
+        self.shaper_offset_btn = QPushButton("Set")
+        self.shaper_offset_btn.setFixedSize(50, 25)
         self.shaper_offset_btn.clicked.connect(self.set_shaper_offset)
-        timing_layout.addWidget(self.shaper_offset_btn, 1, 2)
+        timing_layout.addWidget(self.shaper_offset_btn)
 
-        timing_layout.addWidget(QLabel("Threshold Offset:"), 2, 0)
+        timing_layout.addWidget(QLabel("Threshold Offset:"))
         self.threshold_offset_spin = QSpinBox()
         self.threshold_offset_spin.setRange(0, 200)
         self.threshold_offset_spin.setValue(100)
-        timing_layout.addWidget(self.threshold_offset_spin, 2, 1)
+        self.threshold_offset_spin.setFixedWidth(60)
+        timing_layout.addWidget(self.threshold_offset_spin)
 
-        self.threshold_offset_btn = QPushButton("설정")
+        self.threshold_offset_btn = QPushButton("Set")
+        self.threshold_offset_btn.setFixedSize(50, 25)
         self.threshold_offset_btn.clicked.connect(self.set_threshold_offset)
-        timing_layout.addWidget(self.threshold_offset_btn, 2, 2)
+        timing_layout.addWidget(self.threshold_offset_btn)
 
-        timing_group.setLayout(timing_layout)
-        layout.addWidget(timing_group)
+        timing_layout.addStretch()
+        general_layout.addLayout(timing_layout)
 
-        # 모드 설정
-        mode_group = QGroupBox("모드 설정")
-        mode_layout = QVBoxLayout()
+        # Multiplicity settings in one line
+        multiplicity_layout = QHBoxLayout()
+        multiplicity_layout.setSpacing(5)
 
-        self.single_channel_check = QCheckBox("Single Channel Mode")
-        mode_layout.addWidget(self.single_channel_check)
-
-        self.ecl_delay_check = QCheckBox("ECL Delay")
-        mode_layout.addWidget(self.ecl_delay_check)
-
-        self.blr_mode_check = QCheckBox("BLR Mode")
-        self.blr_mode_check.setChecked(True)
-        mode_layout.addWidget(self.blr_mode_check)
-
-        self.mode_btn = QPushButton("모드 설정 적용")
-        self.mode_btn.clicked.connect(self.apply_mode_settings)
-        mode_layout.addWidget(self.mode_btn)
-
-        mode_group.setLayout(mode_layout)
-        layout.addWidget(mode_group)
-
-        # Multiplicity 설정
-        multiplicity_group = QGroupBox("Multiplicity 설정")
-        multiplicity_layout = QGridLayout()
-
-        multiplicity_layout.addWidget(QLabel("High:"), 0, 0)
+        multiplicity_layout.addWidget(QLabel("Multiplicity High:"))
         self.multiplicity_hi_spin = QSpinBox()
         self.multiplicity_hi_spin.setRange(1, 9)
         self.multiplicity_hi_spin.setValue(5)
-        multiplicity_layout.addWidget(self.multiplicity_hi_spin, 0, 1)
+        self.multiplicity_hi_spin.setFixedWidth(60)
+        multiplicity_layout.addWidget(self.multiplicity_hi_spin)
 
-        multiplicity_layout.addWidget(QLabel("Low:"), 1, 0)
+        multiplicity_layout.addWidget(QLabel("Low:"))
         self.multiplicity_lo_spin = QSpinBox()
         self.multiplicity_lo_spin.setRange(1, 8)
         self.multiplicity_lo_spin.setValue(2)
-        multiplicity_layout.addWidget(self.multiplicity_lo_spin, 1, 1)
+        self.multiplicity_lo_spin.setFixedWidth(60)
+        multiplicity_layout.addWidget(self.multiplicity_lo_spin)
 
-        self.multiplicity_btn = QPushButton("설정")
+        self.multiplicity_btn = QPushButton("Set")
+        self.multiplicity_btn.setFixedSize(50, 25)
         self.multiplicity_btn.clicked.connect(self.set_multiplicity_borders)
-        multiplicity_layout.addWidget(self.multiplicity_btn, 2, 0, 1, 2)
+        multiplicity_layout.addWidget(self.multiplicity_btn)
 
-        multiplicity_group.setLayout(multiplicity_layout)
-        layout.addWidget(multiplicity_group)
+        multiplicity_layout.addStretch()
+        general_layout.addLayout(multiplicity_layout)
 
-        # RC 모드 제어
-        rc_group = QGroupBox("RC 모드")
-        rc_layout = QHBoxLayout()
-
-        self.rc_on_btn = QPushButton("RC 모드 ON")
-        self.rc_on_btn.clicked.connect(self.switch_rc_mode_on)
-        rc_layout.addWidget(self.rc_on_btn)
-
-        self.rc_off_btn = QPushButton("RC 모드 OFF")
-        self.rc_off_btn.clicked.connect(self.switch_rc_mode_off)
-        rc_layout.addWidget(self.rc_off_btn)
-
-        rc_group.setLayout(rc_layout)
-        layout.addWidget(rc_group)
+        general_group.setLayout(general_layout)
+        layout.addWidget(general_group)
 
         self.setLayout(layout)
 
@@ -673,22 +668,6 @@ class AdvancedControlPanel(QWidget):
         except MSCF16Error as e:
             QMessageBox.critical(self, "오류", f"Threshold Offset 설정 실패:\n{str(e)}")
 
-    def apply_mode_settings(self):
-        """모드 설정 적용"""
-        if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "경고", "장치에 연결되지 않았습니다.")
-            return
-
-        try:
-            self.connection_panel.controller.set_single_channel_mode(self.single_channel_check.isChecked())
-            self.connection_panel.controller.set_ecl_delay(self.ecl_delay_check.isChecked())
-            self.connection_panel.controller.set_blr_mode(self.blr_mode_check.isChecked())
-
-            QMessageBox.information(self, "성공", "모드 설정이 적용되었습니다.")
-
-        except MSCF16Error as e:
-            QMessageBox.critical(self, "오류", f"모드 설정 실패:\n{str(e)}")
-
     def set_multiplicity_borders(self):
         """Multiplicity Borders 설정"""
         if not self.connection_panel.is_connected:
@@ -704,33 +683,6 @@ class AdvancedControlPanel(QWidget):
 
         except MSCF16Error as e:
             QMessageBox.critical(self, "오류", f"Multiplicity Borders 설정 실패:\n{str(e)}")
-
-    def switch_rc_mode_on(self):
-        """RC 모드 ON"""
-        if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "경고", "장치에 연결되지 않았습니다.")
-            return
-
-        try:
-            self.connection_panel.controller.switch_rc_mode_on()
-            QMessageBox.information(self, "성공", "RC 모드가 활성화되었습니다.")
-
-        except MSCF16Error as e:
-            QMessageBox.critical(self, "오류", f"RC 모드 활성화 실패:\n{str(e)}")
-
-    def switch_rc_mode_off(self):
-        """RC 모드 OFF"""
-        if not self.connection_panel.is_connected:
-            QMessageBox.warning(self, "경고", "장치에 연결되지 않았습니다.")
-            return
-
-        try:
-            self.connection_panel.controller.switch_rc_mode_off()
-            QMessageBox.information(self, "성공", "RC 모드가 비활성화되었습니다.")
-
-        except MSCF16Error as e:
-            QMessageBox.critical(self, "오류", f"RC 모드 비활성화 실패:\n{str(e)}")
-
 
 class StatusPanel(QWidget):
     """상태 표시 및 로그 패널"""
@@ -829,9 +781,14 @@ class StatusPanel(QWidget):
 class MSCF16MainWindow(QMainWindow):
     """MSCF-16 메인 윈도우"""
 
-    def __init__(self):
+    def __init__(self, auto_connect_port=None, auto_connect_baudrate=9600):
         super().__init__()
+        self.auto_connect_port = auto_connect_port
+        self.auto_connect_baudrate = auto_connect_baudrate
         self.init_ui()
+        # Auto-connect if port is provided
+        if auto_connect_port:
+            QTimer.singleShot(100, self.auto_connect_device)
 
     def init_ui(self):
         self.setWindowTitle("MSCF-16 NIM Device Controller")
@@ -849,32 +806,41 @@ class MSCF16MainWindow(QMainWindow):
         self.connection_panel.connection_changed.connect(self.on_connection_changed)
         main_layout.addWidget(self.connection_panel)
 
-        # Tab widget
-        tab_widget = QTabWidget()
-        tab_widget.setContentsMargins(0, 0, 0, 0)
+        # Version info and Mode settings (between Connection and Threshold Settings)
+        info_mode_layout = QHBoxLayout()
+        info_mode_layout.setSpacing(10)
 
-        # Combined control tab
-        combined_tab = CombinedControlPanel(self.connection_panel)
-        combined_tab.setContentsMargins(0, 0, 0, 0)
-        tab_widget.addTab(combined_tab, "Channel & Group Control")
+        # Version info
+        self.version_label = QLabel("Version: Not connected")
+        self.version_label.setStyleSheet("font-weight: bold;")
+        info_mode_layout.addWidget(self.version_label)
 
-        # Advanced control tab
-        advanced_tab = QWidget()
-        advanced_layout = QVBoxLayout()
-        self.advanced_panel = AdvancedControlPanel(self.connection_panel)
-        advanced_layout.addWidget(self.advanced_panel)
-        advanced_tab.setLayout(advanced_layout)
-        tab_widget.addTab(advanced_tab, "Advanced Control")
+        info_mode_layout.addStretch()
 
-        # Status tab
-        status_tab = QWidget()
-        status_layout = QVBoxLayout()
-        self.status_panel = StatusPanel(self.connection_panel)
-        status_layout.addWidget(self.status_panel)
-        status_tab.setLayout(status_layout)
-        tab_widget.addTab(status_tab, "Status & Log")
+        # Mode settings checkboxes
+        self.single_channel_check = QCheckBox("Single Mode")
+        self.single_channel_check.stateChanged.connect(self._on_single_mode_changed)
+        info_mode_layout.addWidget(self.single_channel_check)
 
-        main_layout.addWidget(tab_widget)
+        self.ecl_delay_check = QCheckBox("ECL Delay")
+        self.ecl_delay_check.stateChanged.connect(self._on_ecl_delay_changed)
+        info_mode_layout.addWidget(self.ecl_delay_check)
+
+        self.blr_mode_check = QCheckBox("BLR Mode")
+        self.blr_mode_check.setChecked(True)
+        self.blr_mode_check.stateChanged.connect(self._on_blr_mode_changed)
+        info_mode_layout.addWidget(self.blr_mode_check)
+
+        self.rc_mode_check = QCheckBox("RC Mode")
+        self.rc_mode_check.stateChanged.connect(self._on_rc_mode_changed)
+        info_mode_layout.addWidget(self.rc_mode_check)
+
+        main_layout.addLayout(info_mode_layout)
+
+        # Combined control panel (includes Advanced Control)
+        combined_panel = CombinedControlPanel(self.connection_panel)
+        combined_panel.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(combined_panel)
         central_widget.setLayout(main_layout)
 
         # Status bar
@@ -885,14 +851,120 @@ class MSCF16MainWindow(QMainWindow):
         # Set initial UI state based on connection status
         self.on_connection_changed(False)
 
+    def auto_connect_device(self):
+        """Auto-connect to device using provided port"""
+        if not self.auto_connect_port:
+            return
+
+        try:
+            # Set port in combo box
+            port_text = f"{self.auto_connect_port} - Auto"
+            self.connection_panel.port_combo.addItem(port_text)
+            self.connection_panel.port_combo.setCurrentText(port_text)
+
+            # Set baudrate if provided
+            if self.auto_connect_baudrate:
+                baudrate_str = str(self.auto_connect_baudrate)
+                if baudrate_str in [self.connection_panel.baudrate_combo.itemText(i) for i in range(self.connection_panel.baudrate_combo.count())]:
+                    self.connection_panel.baudrate_combo.setCurrentText(baudrate_str)
+
+            # Connect
+            self.connection_panel.connect_device()
+            self.status_bar.showMessage(f"Auto-connected to {self.auto_connect_port}")
+        except Exception as e:
+            QMessageBox.critical(self, "Connection Error",
+                               f"Failed to auto-connect to {self.auto_connect_port}:\n{str(e)}")
+
     def on_connection_changed(self, connected):
         """Called when connection status changes"""
         if connected:
             self.status_bar.showMessage("Device Connected")
-            self.status_panel.log_message("Device connected.")
+            self.update_version_info()
+            self.single_channel_check.setEnabled(True)
+            self.ecl_delay_check.setEnabled(True)
+            self.blr_mode_check.setEnabled(True)
+            self.rc_mode_check.setEnabled(True)
         else:
             self.status_bar.showMessage("Device Not Connected")
-            self.status_panel.log_message("Device disconnected.")
+            self.version_label.setText("Version: Not connected")
+            self.single_channel_check.setEnabled(False)
+            self.ecl_delay_check.setEnabled(False)
+            self.blr_mode_check.setEnabled(False)
+            self.rc_mode_check.setEnabled(False)
+
+    def update_version_info(self):
+        """Update version information"""
+        if not self.connection_panel.is_connected or not self.connection_panel.controller:
+            return
+
+        try:
+            sw_version, hw_version = self.connection_panel.controller.get_version_parsed()
+            self.version_label.setText(f"SW: {sw_version} | FW: {hw_version}")
+        except Exception as e:
+            self.version_label.setText(f"Version: Error - {str(e)}")
+
+    def _on_single_mode_changed(self, state):
+        """Handle single channel mode checkbox change"""
+        if not self.connection_panel.is_connected or not self.connection_panel.controller:
+            return
+
+        try:
+            enabled = (state == Qt.Checked)
+            self.connection_panel.controller.set_single_channel_mode(enabled)
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Failed to set single mode:\n{str(e)}")
+            # Revert checkbox state
+            self.single_channel_check.blockSignals(True)
+            self.single_channel_check.setChecked(not enabled)
+            self.single_channel_check.blockSignals(False)
+
+    def _on_ecl_delay_changed(self, state):
+        """Handle ECL delay checkbox change"""
+        if not self.connection_panel.is_connected or not self.connection_panel.controller:
+            return
+
+        try:
+            enabled = (state == Qt.Checked)
+            self.connection_panel.controller.set_ecl_delay(enabled)
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Failed to set ECL delay:\n{str(e)}")
+            # Revert checkbox state
+            self.ecl_delay_check.blockSignals(True)
+            self.ecl_delay_check.setChecked(not enabled)
+            self.ecl_delay_check.blockSignals(False)
+
+    def _on_blr_mode_changed(self, state):
+        """Handle BLR mode checkbox change"""
+        if not self.connection_panel.is_connected or not self.connection_panel.controller:
+            return
+
+        try:
+            enabled = (state == Qt.Checked)
+            self.connection_panel.controller.set_blr_mode(enabled)
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Failed to set BLR mode:\n{str(e)}")
+            # Revert checkbox state
+            self.blr_mode_check.blockSignals(True)
+            self.blr_mode_check.setChecked(not enabled)
+            self.blr_mode_check.blockSignals(False)
+
+    def _on_rc_mode_changed(self, state):
+        """Handle RC mode checkbox change"""
+        if not self.connection_panel.is_connected or not self.connection_panel.controller:
+            return
+
+        try:
+            enabled = (state == Qt.Checked)
+            if enabled:
+                self.connection_panel.controller.switch_rc_mode_on()
+            else:
+                self.connection_panel.controller.switch_rc_mode_off()
+        except MSCF16Error as e:
+            QMessageBox.critical(self, "Error", f"Failed to set RC mode:\n{str(e)}")
+            # Revert checkbox state
+            self.rc_mode_check.blockSignals(True)
+            self.rc_mode_check.setChecked(not enabled)
+            self.rc_mode_check.blockSignals(False)
 
     def closeEvent(self, event):
         """Called when window is closed"""
@@ -920,8 +992,22 @@ def main():
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("MSCF-16")
 
+    # Parse command line arguments for auto-connect
+    auto_connect_port = None
+    auto_connect_baudrate = 9600
+    if len(sys.argv) > 1:
+        auto_connect_port = sys.argv[1]
+        print(f"Auto-connecting to device at: {auto_connect_port}")
+        if len(sys.argv) > 2:
+            try:
+                auto_connect_baudrate = int(sys.argv[2])
+                print(f"Baud rate: {auto_connect_baudrate}")
+            except ValueError:
+                print(f"Warning: Invalid baud rate '{sys.argv[2]}', using default 9600")
+
     # Create and show main window
-    window = MSCF16MainWindow()
+    window = MSCF16MainWindow(auto_connect_port=auto_connect_port,
+                             auto_connect_baudrate=auto_connect_baudrate)
     window.show()
 
     # Start event loop
