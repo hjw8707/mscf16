@@ -91,7 +91,6 @@ class MSCF16Controller:
         try:
             # Add carriage return and send command
             full_command = command + '\r'
-            print(f"Sending command: {full_command}")
             self.serial_connection.write(full_command.encode('ascii'))
             self.serial_connection.flush()
 
@@ -100,9 +99,13 @@ class MSCF16Controller:
                 response += self.serial_connection.read_all().decode('ascii')
                 if response.endswith('>'):
                     break
-            response = response.split('\n\r') # [0] is the echo, [1] is the response, [2] is the prompt
-            print(f"Received response: {response}")
-            return response[0]
+            response = response.replace('\n', '')
+            responses = response.split('\r') # [0] is the echo, [1] is the response, [2] is the prompt
+            # responses에서 비어있는 요소 제거
+            responses = [r for r in responses if r.strip()]
+            # reponse[0] is the echo, [1~-2] is the response, [-1] is the prompt
+            return responses
+
 
         except serial.SerialException as e:
             raise MSCF16Error(f"Serial communication error: {e}")
@@ -231,6 +234,140 @@ class MSCF16Controller:
         """Display all settings (gains, thresholds, pz values, shaping times, etc.)"""
         return self._send_command(Commands.DS)
 
+    def display_setup_parsed(self) -> Tuple[dict, dict, dict]:
+        """
+        Display all settings (gains, thresholds, pz values, shaping times, etc.) and parse them
+        Returns:
+            Tuple of (panel_settings, rc_settings, general_settings) dictionaries
+        """
+        setup = self.display_setup()
+
+        # 공통 parsing 함수: 특정 prefix에 대해 리스트와 common 값을 분해하여
+        # common 값을 각 어레이의 마지막에 append
+        def parse_list_with_common(line, key):
+            # e.g. 'gains: 4 5 0 5 c:4'
+            vals = []
+            cval = None
+            # 값을 ":" 단위로 나눈 뒤 common은 c:로 직접 찾는다
+            segs = line.split()
+            for seg in segs[1:]:  # 첫 번째는 prefix('gains:' 등)이므로 무시
+                if seg.startswith("c:"):
+                    try:
+                        cval = int(seg[2:])
+                    except ValueError:
+                        pass
+                elif seg.isdigit():
+                    vals.append(int(seg))
+            # "common" 값은 각 어레이의 마지막에 추가
+            if cval is not None:
+                vals.append(cval)
+            return {key: vals}
+
+        # prefix:str => (field_name, parse_as_list)
+        panel_rc_prefixes = [
+            ("gains:", "gains", True),
+            ("threshs:", "threshs", True),
+            ("upper lim:", "upper_lim", True),
+            ("pz:", "pz", True),
+            ("shts:", "shts", True),
+            ("mult:", "mult", False),
+            ("monitor:", "monitor", False),
+            ("ECL delay:", "ecl_delay", False),
+            ("TF int:", "tf_int", False),
+        ]
+
+        def parse_mult(line):
+            segs = line.split(":")[1].strip().split()
+            if len(segs) == 2:
+                hi, lo = int(segs[0]), int(segs[1])
+                return {"high": hi, "low": lo}
+            return {}
+
+        def parse_monitor(line):
+            return int(line.split(":")[1].strip())
+
+        def parse_ecl_delay(line):
+            if ':' in line:
+                status = line.split(':')[1].strip()
+                return status == 'on'
+            return None
+
+        def parse_tf_int(line):
+            return int(line.split(":")[1].strip())
+
+        def parse_blr(line):
+            return 'active' in line
+
+        def parse_single_mode(line):
+            return 'single' in line
+
+        def parse_rc_on(line):
+            return 'rc on' in line
+
+        def parse_pz_disp_resolution(line):
+            return int(line.split(":")[1].strip())
+
+        def parse_simple_int(line):
+            return int(line.split(":")[1].strip())
+
+        def parse_str_val(line):
+            return line.split(":")[1].strip()
+
+        # Main parsing loop
+        panel_set, rc_set, gen_set = {}, {}, {}
+        section = None
+
+        i = 0
+        while i < len(setup):
+            line = setup[i].strip()
+            if line.startswith("MSCF-16 Panel settings"):
+                section = "panel"
+            elif line.startswith("MSCF-16 rc settings"):
+                section = "rc"
+            elif line.startswith("MSCF-16 general settings"):
+                section = "general"
+            elif section in ("panel", "rc"):
+                target = panel_set if section == "panel" else rc_set
+                for prefix, key, as_list in panel_rc_prefixes:
+                    if line.startswith(prefix):
+                        if as_list:
+                            d = parse_list_with_common(line, key)
+                            target.update(d)
+                        else:
+                            # Special key별 처리
+                            if key == "mult":
+                                target["mult"] = parse_mult(line)
+                            elif key == "monitor":
+                                target["monitor"] = parse_monitor(line)
+                            elif key == "ecl_delay":
+                                target["ecl_delay"] = parse_ecl_delay(line)
+                            elif key == "tf_int":
+                                target["tf_int"] = parse_tf_int(line)
+                        break
+                else:
+                    if "BLR" in line:
+                        target["blr_active"] = parse_blr(line)
+                    if "single mode" in line:
+                        target["single_mode"] = parse_single_mode(line)
+                    if section == "rc" and "rc on" in line:
+                        target["rc_on"] = parse_rc_on(line)
+                    if section == "rc" and "pz disp resolution" in line:
+                        target["pz_disp_resolution"] = parse_pz_disp_resolution(line)
+            elif section == "general":
+                if line.startswith("BLR thresh:"):
+                    gen_set["blr_thresh"] = parse_simple_int(line)
+                elif line.startswith("Coincidence time:"):
+                    gen_set["coincidence_time"] = parse_simple_int(line)
+                elif line.startswith("Sum discr thresh:"):
+                    gen_set["sum_discr_thresh"] = parse_simple_int(line)
+                elif line.startswith("MSCF-16 software version:"):
+                    gen_set["sw_version"] = parse_str_val(line)
+                elif line.startswith("MSCF-16 firmware version:"):
+                    gen_set["fw_version"] = parse_str_val(line)
+            i += 1
+
+        return panel_set, rc_set, gen_set
+
     def set_baud_rate(self, rate_option: int) -> str:
         """Set baud rate (1-5)"""
         if rate_option not in Parameters.BAUD_RATES:
@@ -249,6 +386,13 @@ class MSCF16Controller:
         """Get firmware version"""
         return self._send_command(Commands.V)
 
+    def get_version_parsed(self) -> Tuple[str, str]: # sw_version, hw_version
+        """Get firmware version and parse it"""
+        version = self.get_version()
+        sw_version = version[1].split(':')[1].strip()
+        hw_version = version[2].split(':')[1].strip()
+        return sw_version, hw_version
+
     def __enter__(self):
         """Context manager entry"""
         self.connect()
@@ -266,6 +410,7 @@ class MSCF16Controller:
 if __name__ == "__main__":
     controller = MSCF16Controller(port="/dev/tty.usbserial-1119991", baudrate=9600)
     controller.connect()
-    print(controller.get_version())
+    print(controller.get_version_parsed())
     print(controller.display_setup())
+    print(controller.display_setup_parsed())
     controller.disconnect()
