@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 MHV-4 GUI Application Launcher
 """
