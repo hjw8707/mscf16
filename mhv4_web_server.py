@@ -1,8 +1,8 @@
 """
 MHV-4 Web Server Application
 
-Flask 기반의 MHV-4 장치 제어 웹 애플리케이션
-기존 PyQt5 GUI와 유사한 인터페이스 제공
+Flask-based web application for controlling MHV-4 device
+Provides interface similar to existing PyQt5 GUI
 """
 
 import sys

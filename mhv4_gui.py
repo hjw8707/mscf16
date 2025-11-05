@@ -1,8 +1,8 @@
 """
 MHV-4 NIM Device GUI Application
 
-PyQt5 기반의 MHV-4 장치 제어 GUI 애플리케이션
-프론트패널과 유사한 인터페이스 제공, 여러 모듈 동시 제어 지원
+PyQt5-based GUI application for controlling MHV-4 device
+Provides interface similar to front panel, supports simultaneous control of multiple modules
 """
 
 import sys

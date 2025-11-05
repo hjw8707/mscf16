@@ -101,9 +101,9 @@ class MSCF16Controller:
                     break
             response = response.replace('\n', '')
             responses = response.split('\r') # [0] is the echo, [1] is the response, [2] is the prompt
-            # responses에서 비어있는 요소 제거
+            # Remove empty elements from responses
             responses = [r for r in responses if r.strip()]
-            # reponse[0] is the echo, [1~-2] is the response, [-1] is the prompt
+            # response[0] is the echo, [1~-2] is the response, [-1] is the prompt
             return responses
 
 
@@ -242,15 +242,15 @@ class MSCF16Controller:
         """
         setup = self.display_setup()
 
-        # 공통 parsing 함수: 특정 prefix에 대해 리스트와 common 값을 분해하여
-        # common 값을 각 어레이의 마지막에 append
+        # Common parsing function: parse list and common value for a specific prefix
+        # Append common value to the end of each array
         def parse_list_with_common(line, key):
             # e.g. 'gains: 4 5 0 5 c:4'
             vals = []
             cval = None
-            # 값을 ":" 단위로 나눈 뒤 common은 c:로 직접 찾는다
+            # Split values by ":" and find common value directly with c:
             segs = line.split()
-            for seg in segs[1:]:  # 첫 번째는 prefix('gains:' 등)이므로 무시
+            for seg in segs[1:]:  # First element is prefix ('gains:' etc.), so ignore it
                 if seg.startswith("c:"):
                     try:
                         cval = int(seg[2:])
@@ -258,7 +258,7 @@ class MSCF16Controller:
                         pass
                 elif seg.isdigit():
                     vals.append(int(seg))
-            # "common" 값은 각 어레이의 마지막에 추가
+            # Add "common" value to the end of each array
             if cval is not None:
                 vals.append(cval)
             return {key: vals}
@@ -334,7 +334,7 @@ class MSCF16Controller:
                             d = parse_list_with_common(line, key)
                             target.update(d)
                         else:
-                            # Special key별 처리
+                            # Handle special keys
                             if key == "mult":
                                 target["mult"] = parse_mult(line)
                             elif key == "monitor":

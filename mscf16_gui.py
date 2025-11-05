@@ -1,7 +1,7 @@
 """
 MSCF-16 NIM Device GUI Application
 
-PyQt5 기반의 MSCF-16 장치 제어 GUI 애플리케이션
+PyQt5-based GUI application for controlling MSCF-16 device
 """
 
 from re import A
@@ -759,10 +759,10 @@ class DeviceTab(QWidget):
 
         # Version info and Mode settings
         info_mode_layout = QHBoxLayout()
-        # 레이아웃 처음에만 공백 넣기
+        # Add spacing only at the beginning of layout
         info_mode_layout.addSpacing(35)
 
-        info_mode_layout.setSpacing(15)  # 위젯 간 간격을 좁게 조정 (기존 spacing=50에서 20으로)
+        info_mode_layout.setSpacing(15)  # Reduce spacing between widgets (changed from spacing=50 to 15)
         # Version info
         self.version_label = QLabel("Version: Not connected")
         self.version_label.setStyleSheet("font-weight: bold;")
@@ -1209,7 +1209,7 @@ class DeviceTab(QWidget):
 
 
 class MSCF16MainWindow(QMainWindow):
-    """MSCF-16 메인 윈도우"""
+    """MSCF-16 Main Window"""
 
     def __init__(self, auto_connect_port=None, auto_connect_baudrate=9600):
         super().__init__()
