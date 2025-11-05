@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MHV-4 NIM Device Controller</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>MHV-4 - 4 Channel 800V High Voltage Supply</h1>
+
+        <!-- Connection Panel -->
+        <div class="connection-panel">
+            <h2>Connection Settings</h2>
+            <div class="connection-controls">
+                <label>Port:</label>
+                <select id="port-select">
+                    <option value="">Loading ports...</option>
+                </select>
+                <button id="refresh-btn">Refresh</button>
+                <button id="connect-btn">Connect</button>
+                <span id="connection-status" class="status-not-connected">Not Connected</span>
+            </div>
+        </div>
+
+        <!-- Module Management -->
+        <div class="module-management">
+            <h2>Modules</h2>
+            <div class="module-controls">
+                <button id="add-module-btn">Add Module</button>
+                <button id="remove-module-btn">Remove Module</button>
+            </div>
+        </div>
+
+        <!-- Module Tabs -->
+        <div id="module-tabs" class="tabs-container">
+            <!-- Modules will be added here dynamically -->
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

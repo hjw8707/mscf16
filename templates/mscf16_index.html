@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSCF-16 NIM Device Controller</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mscf16_style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>MSCF-16 NIM Device Controller</h1>
+
+        <!-- Connection Panel -->
+        <div class="connection-panel">
+            <h2>Connection Settings</h2>
+            <div class="connection-controls">
+                <label>Port:</label>
+                <select id="port-select">
+                    <option value="">Loading ports...</option>
+                </select>
+                <button id="refresh-btn">Refresh</button>
+                <label>Baud Rate:</label>
+                <select id="baudrate-select">
+                    <option value="9600" selected>9600</option>
+                    <option value="19200">19200</option>
+                    <option value="28400">28400</option>
+                    <option value="57600">57600</option>
+                    <option value="115200">115200</option>
+                </select>
+                <button id="connect-btn">Connect</button>
+            </div>
+        </div>
+
+        <!-- Module Tabs -->
+        <div id="module-tabs" class="tabs-container">
+            <!-- Modules will be added here dynamically -->
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/mscf16_app.js') }}"></script>
+</body>
+</html>

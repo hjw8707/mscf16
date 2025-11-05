@@ -1,0 +1,415 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    padding: 10px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+h1 {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+h2 {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+/* Connection Panel */
+.connection-panel {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.connection-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.connection-controls label {
+    font-weight: bold;
+}
+
+.connection-controls select {
+    min-width: 150px;
+    padding: 5px;
+}
+
+.connection-controls button {
+    padding: 5px 15px;
+    cursor: pointer;
+}
+
+/* Tabs */
+.tabs-container {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.tab-header {
+    display: flex;
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 10px;
+}
+
+.tab-button {
+    padding: 8px 15px;
+    background-color: #f0f0f0;
+    border: none;
+    border-right: 1px solid #ccc;
+    cursor: pointer;
+}
+
+.tab-button.active {
+    background-color: white;
+    border-bottom: 2px solid white;
+    margin-bottom: -1px;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Device Tab */
+.device-tab {
+    padding: 5px;
+}
+
+.device-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+}
+
+.version-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.version-label {
+    font-weight: bold;
+}
+
+.version-value {
+    color: #666;
+}
+
+.mode-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.mode-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.mode-checkbox input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.action-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.disconnect-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    background-color: #ffcccc;
+    font-weight: bold;
+}
+
+/* Control Panel */
+.control-panel {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.channel-control, .group-control {
+    flex: 1;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 5px;
+}
+
+.control-section {
+    margin-bottom: 10px;
+}
+
+.section-title {
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    padding: 3px;
+    background-color: #f0f0f0;
+}
+
+/* Threshold Settings */
+.threshold-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 3px;
+    margin-bottom: 5px;
+}
+
+.threshold-item {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.threshold-label {
+    font-size: 10px;
+    min-width: 35px;
+}
+
+.threshold-input {
+    width: 50px;
+    padding: 2px;
+    font-size: 10px;
+}
+
+.threshold-btn {
+    padding: 2px 5px;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.common-threshold {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px solid #ddd;
+}
+
+.common-threshold-btn {
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    background-color: #ffcccc;
+    font-weight: bold;
+}
+
+/* PZ Settings */
+.pz-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 3px;
+    margin-bottom: 5px;
+}
+
+.pz-item {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.pz-label {
+    font-size: 10px;
+    min-width: 35px;
+}
+
+.pz-input {
+    width: 50px;
+    padding: 2px;
+    font-size: 10px;
+}
+
+.pz-btn {
+    padding: 2px 5px;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.common-pz {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px solid #ddd;
+}
+
+.common-pz-btn {
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    background-color: #ccffcc;
+    font-weight: bold;
+}
+
+/* Monitor and Auto PZ */
+.monitor-auto-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.monitor-group, .auto-pz-group {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 5px;
+}
+
+.monitor-row, .auto-pz-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.monitor-row label, .auto-pz-row label {
+    font-size: 11px;
+    min-width: 80px;
+}
+
+.monitor-select, .auto-pz-select {
+    flex: 1;
+    padding: 3px;
+    font-size: 11px;
+}
+
+.auto-pz-btn {
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+/* Group Settings */
+.group-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.shaping-group, .gain-group {
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 5px;
+}
+
+.shaping-row, .gain-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 3px;
+}
+
+.shaping-row label, .gain-row label {
+    font-size: 11px;
+    min-width: 40px;
+}
+
+.shaping-input, .gain-input {
+    width: 40px;
+    padding: 2px;
+    font-size: 11px;
+}
+
+.shaping-btn, .gain-btn {
+    padding: 2px 5px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.common-shaping, .common-gain {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px solid #ddd;
+}
+
+.common-shaping-btn {
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    background-color: #ffffcc;
+    font-weight: bold;
+}
+
+.common-gain-btn {
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    background-color: #ddffdd;
+    font-weight: bold;
+}
+
+/* General Settings */
+.general-settings {
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 5px;
+    margin-top: 10px;
+}
+
+.general-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 5px;
+    flex-wrap: wrap;
+}
+
+.general-row label {
+    font-size: 11px;
+    min-width: 100px;
+}
+
+.general-input {
+    width: 60px;
+    padding: 3px;
+    font-size: 11px;
+}
+
+.general-select {
+    padding: 3px;
+    font-size: 11px;
+}
+
+.general-btn {
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+}

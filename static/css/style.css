@@ -1,0 +1,448 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    padding: 10px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+h1 {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+h2 {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+/* Connection Panel */
+.connection-panel {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.connection-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.connection-controls label {
+    font-weight: bold;
+}
+
+.connection-controls select {
+    min-width: 200px;
+    padding: 5px;
+}
+
+.connection-controls button {
+    padding: 5px 15px;
+    cursor: pointer;
+}
+
+.status-not-connected {
+    color: red;
+    font-weight: bold;
+}
+
+.status-connected {
+    color: green;
+    font-weight: bold;
+}
+
+/* Module Management */
+.module-management {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.module-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.module-controls button {
+    padding: 5px 15px;
+    cursor: pointer;
+}
+
+/* Tabs */
+.tabs-container {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.tab-header {
+    display: flex;
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 10px;
+}
+
+.tab-button {
+    padding: 8px 15px;
+    background-color: #f0f0f0;
+    border: none;
+    border-right: 1px solid #ccc;
+    cursor: pointer;
+}
+
+.tab-button.active {
+    background-color: white;
+    border-bottom: 2px solid white;
+    margin-bottom: -1px;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Module Panel */
+.module-panel {
+    padding: 5px;
+}
+
+.module-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.ramp-speed-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ramp-speed-control label {
+    font-weight: bold;
+}
+
+.ramp-speed-control select {
+    padding: 5px;
+}
+
+/* Channel Panel */
+.channels-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+}
+
+.channel-panel {
+    border: 2px solid #666;
+    border-radius: 5px;
+    background-color: #ffffcc;
+    padding: 3px;
+    display: flex;
+    flex-direction: column;
+}
+
+.channel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.channel-label {
+    font-weight: bold;
+    font-size: 11px;
+}
+
+.polarity-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.polarity-select {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.polarity-select label {
+    font-size: 10px;
+}
+
+.polarity-select select {
+    padding: 2px;
+    font-size: 10px;
+}
+
+.polarity-indicators {
+    display: flex;
+    gap: 3px;
+}
+
+.polarity-indicator {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #333;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.polarity-positive.active {
+    background-color: #90EE90;
+}
+
+.polarity-positive.inactive {
+    background-color: #CCCCCC;
+}
+
+.polarity-negative.active {
+    background-color: #90EE90;
+}
+
+.polarity-negative.inactive {
+    background-color: #CCCCCC;
+}
+
+.power-indicator {
+    width: 35px;
+    height: 20px;
+    border: 1px solid #333;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.power-on {
+    background-color: #FF0000;
+    color: white;
+}
+
+.power-off {
+    background-color: #CCCCCC;
+    color: black;
+}
+
+/* Voltage and Current Displays */
+.display-container {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 5px;
+}
+
+.display-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.display-label {
+    text-align: center;
+    font-size: 15px;
+    margin-bottom: 1px;
+}
+
+.lcd-display {
+    background-color: #000000;
+    color: #FF0000;
+    border: 1px solid #333;
+    padding: 5px;
+    font-family: 'Courier New', monospace;
+    font-size: 20px;
+    text-align: right;
+    min-height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+/* Control Inputs */
+.control-group {
+    margin-bottom: 5px;
+}
+
+.control-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 3px;
+}
+
+.control-row label {
+    font-size: 11px;
+    min-width: 60px;
+}
+
+.control-row input[type="number"] {
+    flex: 1;
+    padding: 3px;
+    font-size: 11px;
+}
+
+.control-row button {
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+/* Custom Ramping */
+.ramp-group {
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 5px;
+    margin-bottom: 5px;
+}
+
+.ramp-group h3 {
+    font-size: 12px;
+    margin-bottom: 3px;
+}
+
+.ramp-checkbox {
+    margin-bottom: 3px;
+}
+
+.ramp-checkbox label {
+    font-size: 11px;
+}
+
+.step-interval-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 3px;
+}
+
+.step-interval-row label {
+    font-size: 11px;
+    min-width: 40px;
+}
+
+.step-interval-row input[type="number"] {
+    width: 80px;
+    padding: 3px;
+    font-size: 11px;
+}
+
+.ramp-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 3px;
+}
+
+.ramp-status-indicator {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #333;
+    border-radius: 10px;
+    background-color: #CCCCCC;
+}
+
+.ramp-status-indicator.active {
+    background-color: #90EE90;
+}
+
+.ramp-status-label {
+    font-weight: bold;
+    font-size: 11px;
+}
+
+.stop-ramp-btn {
+    background-color: #FFCCCC;
+    font-weight: bold;
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+/* Power Controls */
+.power-controls {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 5px;
+}
+
+.power-btn {
+    flex: 1;
+    padding: 5px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.power-on-btn {
+    background-color: #90EE90;
+}
+
+.power-off-btn {
+    background-color: #FFCCCC;
+}
+
+/* Temperature Compensation */
+.temp-comp-group {
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 5px;
+    margin-bottom: 5px;
+}
+
+.temp-comp-group h3 {
+    font-size: 12px;
+    margin-bottom: 3px;
+}
+
+.temp-comp-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 3px;
+}
+
+.temp-comp-row label {
+    font-size: 11px;
+    min-width: 60px;
+}
+
+.temp-comp-row select,
+.temp-comp-row input[type="number"] {
+    flex: 1;
+    padding: 3px;
+    font-size: 11px;
+}
+
+/* Auto Shutdown */
+.auto-shutdown {
+    margin-bottom: 5px;
+}
+
+.auto-shutdown label {
+    font-size: 11px;
+}
